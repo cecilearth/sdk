@@ -13,7 +13,7 @@
 ## Installation
 
 ```console
-pip install pydantic "snowflake-connector-python[pandas]"
+pip install pydantic requests "snowflake-connector-python[pandas]"
 pip install --index-url https://test.pypi.org/simple/ --no-deps cecil
 ```
 
