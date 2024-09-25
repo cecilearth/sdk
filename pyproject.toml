@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cecil"
+dynamic = ["version"]
+description = 'Python SDK for Cecil Earth'
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pydantic",
+    "requests",
+    "snowflake-connector-python[pandas]"
+]
+
+[tool.hatch.version]
+path = "__about__.py"
+
+[tool.hatch.envs.hatch-test]
+extra-dependencies = [
+    "responses"
+]
