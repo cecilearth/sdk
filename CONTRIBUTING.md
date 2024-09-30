@@ -6,6 +6,12 @@ Install packaging/distribution tools:
 pip install hatch twine
 ```
 
+Install linter
+
+```shell
+pip install black
+```
+
 From top-level repo directory, install the package in editable mode:
 
 ```shell
