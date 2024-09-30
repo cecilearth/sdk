@@ -12,7 +12,7 @@ CECIL_ORGANISATION_ID_HEADER = "cecil-organisation-id"
 
 
 # TODO: Documentation (Google style)
-# TODO: Linting (black)
+
 
 class Client:
     def __init__(self):
@@ -32,7 +32,9 @@ class Client:
         return [AOI(**record) for record in res.json()["Records"]]
 
     def create_data_request(self, aoi_id: str, dataset_id: str) -> DataRequest:
-        res = self._post("/data-requests", json={"AOIID": aoi_id, "DatasetID": dataset_id})
+        res = self._post(
+            "/data-requests", json={"AOIID": aoi_id, "DatasetID": dataset_id}
+        )
         return DataRequest(**res.json())
 
     def get_data_request(self, id: str) -> DataRequest:
@@ -43,14 +45,17 @@ class Client:
         res = self._get("/data-requests")
         return [DataRequest(**record) for record in res.json()["Records"]]
 
-    def create_reprojection(self, data_request_id: str, crs: str, resolution: float) -> Reprojection:
+    def create_reprojection(
+        self, data_request_id: str, crs: str, resolution: float
+    ) -> Reprojection:
         res = self._post(
             "/reprojections",
             json={
                 "DataRequestID": data_request_id,
                 "CRS": crs,
                 "Resolution": resolution,
-            })
+            },
+        )
         return Reprojection(**res.json())
 
     def get_reprojection(self, id: str) -> Reprojection:

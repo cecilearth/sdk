@@ -1,14 +1,15 @@
-from enum import Enum
-from pydantic import BaseModel
-from typing import Dict, List, Optional
 import datetime
+from enum import Enum
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel
 
 
 class AOI(BaseModel):
     ID: str
     Name: str
     Geometry: Dict
-    Hectares: Optional[float]  # TODO: Add hectares to model once Create endpoints returns it
+    Hectares: Optional[float]
     Created: datetime.datetime
 
 

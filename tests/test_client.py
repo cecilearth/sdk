@@ -1,6 +1,7 @@
 import responses
+
 from src.cecil.client import Client
-from src.cecil.models import DataRequest, SubRequest, DataRequestStatus
+from src.cecil.models import DataRequest, DataRequestStatus
 
 FROZEN_TIME = "2024-01-01T00:00:00.000Z"
 
@@ -52,7 +53,7 @@ def test_client_list_data_requests():
                     "DatasetID": "dataset_id",
                     "SubRequests": [],  # TODO: Add some SubRequests
                     "Status": "Processing",
-                    "Created": "2024-09-19T04:45:57.561Z"
+                    "Created": "2024-09-19T04:45:57.561Z",
                 },
                 {
                     "ID": "data_request_id_2",
@@ -60,10 +61,10 @@ def test_client_list_data_requests():
                     "DatasetID": "dataset_id",
                     "SubRequests": [],  # TODO: Add some SubRequests
                     "Status": "Completed",
-                    "Created": "2024-09-19T04:54:38.252Z"
+                    "Created": "2024-09-19T04:54:38.252Z",
                 },
             ]
-        }
+        },
     )
 
     client = Client()
