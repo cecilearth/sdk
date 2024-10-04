@@ -1,15 +1,14 @@
+import os
 from typing import Dict, List
 
 import requests
+from requests import auth
 
 from .models import AOI, DataRequest, Reprojection
 
 HTTP_TIMEOUT_SECONDS = 3
 
 BASE_URL = f"https://dev-api.cecil.earth/v0"
-ORGANISATION_ID = "6898268f-9288-4296-8d5b-ae68517bb65e"
-CECIL_ORGANISATION_ID_HEADER = "cecil-organisation-id"
-
 
 # TODO: Documentation (Google style)
 
@@ -17,7 +16,7 @@ CECIL_ORGANISATION_ID_HEADER = "cecil-organisation-id"
 class Client:
     def __init__(self):
         self._base_url = BASE_URL
-        self._organisation_id = ORGANISATION_ID
+        self._auth = None
 
     def create_aoi(self, name: str, geometry: Dict) -> AOI:
         res = self._post("/aois", json={"Name": name, "Geometry": geometry})
@@ -68,17 +67,20 @@ class Client:
 
     def _request(self, method, url, **kwargs):
 
+        self._set_auth()
+
         if kwargs is None:
             kwargs = {}
 
         if "headers" not in kwargs:
             kwargs["headers"] = {}
 
-        kwargs["headers"][CECIL_ORGANISATION_ID_HEADER] = self._organisation_id
         kwargs["timeout"] = HTTP_TIMEOUT_SECONDS
 
         try:
-            r = requests.request(method, self._base_url + url, **kwargs)
+            r = requests.request(
+                method, self._base_url + url, auth=self._auth, **kwargs
+            )
             r.raise_for_status()
             return r
 
@@ -95,3 +97,10 @@ class Client:
 
     def _post(self, url, data=None, json=None, **kwargs):
         return self._request("post", url, data=data, json=json, **kwargs)
+
+    def _set_auth(self):
+        try:
+            api_key = os.environ["CECIL_API_KEY"]
+            self._auth = auth.HTTPBasicAuth(api_key, "")
+        except KeyError:
+            raise ValueError("environment variable CECIL_API_KEY not set") from None
