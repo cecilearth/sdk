@@ -1,10 +1,18 @@
 import os
+from pydantic import BaseModel
 from typing import Dict, List
-
 import requests
+
 from requests import auth
 
-from .models import AOI, DataRequest, Reprojection
+from .models import (
+    AOI,
+    AOICreate,
+    DataRequest,
+    DataRequestCreate,
+    Reprojection,
+    ReprojectionCreate,
+)
 
 HTTP_TIMEOUT_SECONDS = 3
 
@@ -19,70 +27,67 @@ class Client:
         self._auth = None
 
     def create_aoi(self, name: str, geometry: Dict) -> AOI:
-        res = self._post("/aois", json={"Name": name, "Geometry": geometry})
-        return AOI(**res.json())
+        res = self._post(url="/aois", model=AOICreate(name=name, geometry=geometry))
+        return AOI(**res)
 
     def get_aoi(self, id: str) -> AOI:
-        res = self._get(f"/aois/{id}")
-        return AOI(**res.json())
+        res = self._get(url=f"/aois/{id}")
+        return AOI(**res)
 
     def list_aois(self) -> List[AOI]:
-        res = self._get("/aois")
-        return [AOI(**record) for record in res.json()["Records"]]
+        res = self._get(url="/aois")
+        return [AOI(**record) for record in res["records"]]
 
     def create_data_request(self, aoi_id: str, dataset_id: str) -> DataRequest:
         res = self._post(
-            "/data-requests", json={"AOIID": aoi_id, "DatasetID": dataset_id}
+            url="/data-requests",
+            model=DataRequestCreate(aoi_id=aoi_id, dataset_id=dataset_id),
         )
-        return DataRequest(**res.json())
+        return DataRequest(**res)
 
     def get_data_request(self, id: str) -> DataRequest:
-        res = self._get(f"/data-requests/{id}")
-        return DataRequest(**res.json())
+        res = self._get(url=f"/data-requests/{id}")
+        return DataRequest(**res)
 
     def list_data_requests(self):
-        res = self._get("/data-requests")
-        return [DataRequest(**record) for record in res.json()["Records"]]
+        res = self._get(url="/data-requests")
+        return [DataRequest(**record) for record in res["records"]]
 
     def create_reprojection(
         self, data_request_id: str, crs: str, resolution: float
     ) -> Reprojection:
         res = self._post(
-            "/reprojections",
-            json={
-                "DataRequestID": data_request_id,
-                "CRS": crs,
-                "Resolution": resolution,
-            },
+            url="/reprojections",
+            model=ReprojectionCreate(
+                data_request_id=data_request_id,
+                crs=crs,
+                resolution=resolution,
+            ),
         )
-        return Reprojection(**res.json())
+        return Reprojection(**res)
 
     def get_reprojection(self, id: str) -> Reprojection:
-        res = self._get(f"/reprojections/{id}")
-        return Reprojection(**res.json())
+        res = self._get(url=f"/reprojections/{id}")
+        return Reprojection(**res)
 
     def list_reprojections(self) -> List[Reprojection]:
-        res = self._get("/reprojections")
-        return [Reprojection(**record) for record in res.json()["Records"]]
+        res = self._get(url="/reprojections")
+        return [Reprojection(**record) for record in res["records"]]
 
-    def _request(self, method, url, **kwargs):
+    def _request(self, method: str, url: str, **kwargs) -> Dict:
 
         self._set_auth()
 
-        if kwargs is None:
-            kwargs = {}
-
-        if "headers" not in kwargs:
-            kwargs["headers"] = {}
-
-        kwargs["timeout"] = HTTP_TIMEOUT_SECONDS
-
         try:
             r = requests.request(
-                method, self._base_url + url, auth=self._auth, **kwargs
+                method=method,
+                url=self._base_url + url,
+                auth=self._auth,
+                timeout=HTTP_TIMEOUT_SECONDS,
+                **kwargs,
             )
             r.raise_for_status()
-            return r
+            return r.json()
 
         except requests.exceptions.ConnectionError as err:
             raise ValueError("Connection error") from err
@@ -92,15 +97,17 @@ class Client:
             else:
                 raise
 
-    def _get(self, url, params=None, **kwargs):
-        return self._request("get", url, params=params, **kwargs)
+    def _get(self, url: str, **kwargs) -> Dict:
+        return self._request(method="get", url=url, **kwargs)
 
-    def _post(self, url, data=None, json=None, **kwargs):
-        return self._request("post", url, data=data, json=json, **kwargs)
+    def _post(self, url: str, model: BaseModel, **kwargs) -> Dict:
+        return self._request(
+            method="post", url=url, json=model.model_dump(by_alias=True), **kwargs
+        )
 
-    def _set_auth(self):
+    def _set_auth(self) -> None:
         try:
             api_key = os.environ["CECIL_API_KEY"]
-            self._auth = auth.HTTPBasicAuth(api_key, "")
+            self._auth = auth.HTTPBasicAuth(username=api_key, password="")
         except KeyError:
             raise ValueError("environment variable CECIL_API_KEY not set") from None
