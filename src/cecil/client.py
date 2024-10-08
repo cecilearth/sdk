@@ -12,6 +12,7 @@ from .models import (
     DataRequestCreate,
     Reprojection,
     ReprojectionCreate,
+    SnowflakeCredentials,
 )
 
 HTTP_TIMEOUT_SECONDS = 3
@@ -19,6 +20,7 @@ HTTP_TIMEOUT_SECONDS = 3
 BASE_URL = f"https://dev-api.cecil.earth/v0"
 
 # TODO: Documentation (Google style)
+# TODO: Add retries
 
 
 class Client:
@@ -73,6 +75,10 @@ class Client:
     def list_reprojections(self) -> List[Reprojection]:
         res = self._get(url="/reprojections")
         return [Reprojection(**record) for record in res["records"]]
+
+    def _get_data_access_credentials(self) -> SnowflakeCredentials:
+        res = self._get(url="/data-access-credentials")
+        return SnowflakeCredentials(**res)
 
     def _request(self, method: str, url: str, **kwargs) -> Dict:
 

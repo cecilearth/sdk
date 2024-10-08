@@ -1,25 +1,21 @@
-import os
-
 import snowflake.connector
+
+from .client import Client
 
 
 class DataAccess:
     def __init__(self):
-        self._authenticated = False
-        self._default_warehouse = "ADMIN_WH"
+        self._creds = None
 
-    def authenticate(self):
-        self._authenticated = True
+    def query(self, sql):
 
-    def query(self, database, sql, warehouse=None):
-        if warehouse is None:
-            warehouse = self._default_warehouse
+        if self._creds is None:
+            self._creds = Client()._get_data_access_credentials()
 
         with snowflake.connector.connect(
-            user=os.environ.get("CECIL_SNOWFLAKE_USER"),
-            account=os.environ.get("CECIL_SNOWFLAKE_ACCOUNT"),
-            private_key_file=os.environ.get("CECIL_SNOWFLAKE_PRIVATE_KEY_FILE"),
-            database=database,
-            warehouse=warehouse,
+            account=self._creds.account.get_secret_value(),
+            database="ANALYTICS_DB",
+            user=self._creds.user.get_secret_value(),
+            password=self._creds.password.get_secret_value(),
         ) as conn:
             return conn.cursor().execute(sql).fetch_pandas_all()
