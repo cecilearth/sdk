@@ -15,7 +15,7 @@ from .models import (
     SnowflakeCredentials,
 )
 
-HTTP_TIMEOUT_SECONDS = 3
+HTTP_TIMEOUT_SECONDS = 5
 
 BASE_URL = f"https://dev-api.cecil.earth/v0"
 
