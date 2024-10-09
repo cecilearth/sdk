@@ -8,10 +8,96 @@
 ## Table of Contents
 
 - [Installation](#installation)
+- [Authentication](#authentication)
 - [License](#license)
+- [Examples](#examples)
+
+## Installation
 
 ```shell
 pip install cecil
+```
+
+## Authentication
+
+Set `CECIL_API_KEY` environment variable to your Cecil API key.
+
+## Examples
+
+### Create an AOI and data request using the Cecil client
+
+```python
+import cecil
+
+client = cecil.Client()
+
+my_aoi = client.create_aoi(
+    name="My AOI",
+    geometry={
+        "type": "Polygon",
+        "coordinates": [
+            [
+                [145.410408835, -42.004083838],
+                [145.410408835, -42.004203978],
+                [145.410623191, -42.004203978],
+                [145.410623191, -42.004083838],
+                [145.410408835, -42.004083838],
+            ]
+        ],
+    },
+)
+
+# Get dataset ID from docs.cecil.earth -> Datasets
+planet_forest_carbon_diligence_id = "c2dd4f55-56f6-4d05-aae3-ba7c1dcd812f"
+
+my_data_request = client.create_data_request(
+    aoi_id=my_aoi.id,
+    dataset_id=planet_forest_carbon_diligence_id,
+)
+
+print(client.get_data_request(my_data_request.id).status)
+```
+
+### Create a reprojection using the Cecil client (once data request is completed)
+
+```python
+my_reprojection = client.create_reprojection(
+    data_request_id=my_data_request.id,
+    crs="EPSG:4326",
+    resolution=0.005,
+)
+
+print(client.get_reprojection(my_reprojection.id).status)
+```
+
+### Query data using Cecil data access (once reprojection is completed)
+
+```python
+data_access = cecil.DataAccess()
+
+df = data_access.query(f'''
+    SELECT *
+    FROM 
+        planet.forest_carbon_diligence
+    WHERE
+        reprojection_id = '{my_reprojection.id}'
+''')
+```
+
+### Other client methods:
+
+```python
+client.list_aois()
+
+client.get_aoi(my_aoi.id)
+
+client.list_data_requests()
+
+client.get_data_request(my_data_request.id)
+
+client.list_reprojections()
+
+client.get_reprojection(my_reprojection.id)
 ```
 
 ## License
