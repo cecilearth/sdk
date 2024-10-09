@@ -29,6 +29,7 @@ class Client:
         self._auth = None
 
     def create_aoi(self, name: str, geometry: Dict) -> AOI:
+        # TODO: validate geometry
         res = self._post(url="/aois", model=AOICreate(name=name, geometry=geometry))
         return AOI(**res)
 
@@ -58,6 +59,7 @@ class Client:
     def create_reprojection(
         self, data_request_id: str, crs: str, resolution: float
     ) -> Reprojection:
+        # TODO: check if data request is completed before creating reprojection
         res = self._post(
             url="/reprojections",
             model=ReprojectionCreate(

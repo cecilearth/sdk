@@ -18,4 +18,7 @@ class DataAccess:
             user=self._creds.user.get_secret_value(),
             password=self._creds.password.get_secret_value(),
         ) as conn:
-            return conn.cursor().execute(sql).fetch_pandas_all()
+            df = conn.cursor().execute(sql).fetch_pandas_all()
+            df.columns = [x.lower() for x in df.columns]
+
+            return df
