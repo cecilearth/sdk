@@ -5,6 +5,8 @@ import requests
 
 from requests import auth
 
+import snowflake.connector
+
 from .models import (
     AOI,
     AOICreate,
@@ -17,16 +19,18 @@ from .models import (
 
 HTTP_TIMEOUT_SECONDS = 5
 
-BASE_URL = f"https://dev-api.cecil.earth/v0"
+# TODO: change to prod
+BASE_URL = "https://dev-api.cecil.earth/v0"
 
 # TODO: Documentation (Google style)
-# TODO: Add retries
+# TODO: Add HTTP retries
 
 
 class Client:
     def __init__(self):
+        self._api_auth = None
         self._base_url = BASE_URL
-        self._auth = None
+        self._snowflake_creds = None
 
     def create_aoi(self, name: str, geometry: Dict) -> AOI:
         # TODO: validate geometry
@@ -78,9 +82,20 @@ class Client:
         res = self._get(url="/reprojections")
         return [Reprojection(**record) for record in res["records"]]
 
-    def _get_data_access_credentials(self) -> SnowflakeCredentials:
-        res = self._get(url="/data-access-credentials")
-        return SnowflakeCredentials(**res)
+    def query(self, sql):
+        if self._snowflake_creds is None:
+            res = self._get(url="/data-access-credentials")
+            self._snowflake_creds = SnowflakeCredentials(**res)
+
+        with snowflake.connector.connect(
+            account=self._snowflake_creds.account.get_secret_value(),
+            user=self._snowflake_creds.user.get_secret_value(),
+            password=self._snowflake_creds.password.get_secret_value(),
+        ) as conn:
+            df = conn.cursor().execute(sql).fetch_pandas_all()
+            df.columns = [x.lower() for x in df.columns]
+
+            return df
 
     def _request(self, method: str, url: str, **kwargs) -> Dict:
 
@@ -90,7 +105,7 @@ class Client:
             r = requests.request(
                 method=method,
                 url=self._base_url + url,
-                auth=self._auth,
+                auth=self._api_auth,
                 timeout=HTTP_TIMEOUT_SECONDS,
                 **kwargs,
             )
@@ -116,6 +131,6 @@ class Client:
     def _set_auth(self) -> None:
         try:
             api_key = os.environ["CECIL_API_KEY"]
-            self._auth = auth.HTTPBasicAuth(username=api_key, password="")
+            self._api_auth = auth.HTTPBasicAuth(username=api_key, password="")
         except KeyError:
             raise ValueError("environment variable CECIL_API_KEY not set") from None
