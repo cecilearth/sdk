@@ -70,12 +70,10 @@ my_reprojection = client.create_reprojection(
 print(client.get_reprojection(my_reprojection.id).status)
 ```
 
-### Query data using Cecil data access (once reprojection is completed)
+### Query data (once reprojection is completed)
 
 ```python
-data_access = cecil.DataAccess()
-
-df = data_access.query(f'''
+df = client.query(f'''
     SELECT *
     FROM 
         planet.forest_carbon_diligence
