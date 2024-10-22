@@ -17,47 +17,44 @@ from .models import (
     SnowflakeCredentials,
 )
 
-HTTP_TIMEOUT_SECONDS = 5
-
-# TODO: change to prod
-BASE_URL = "https://dev-api.cecil.earth/v0"
+HTTP_TIMEOUT_SECONDS = 10
 
 # TODO: Documentation (Google style)
 # TODO: Add HTTP retries
 
 
 class Client:
-    def __init__(self):
+    def __init__(self, env="dev"):
         self._api_auth = None
-        self._base_url = BASE_URL
+        self._base_url = f"https://{env}-api.cecil.earth"  # TODO: hard-code to prod URL
         self._snowflake_creds = None
 
     def create_aoi(self, name: str, geometry: Dict) -> AOI:
         # TODO: validate geometry
-        res = self._post(url="/aois", model=AOICreate(name=name, geometry=geometry))
+        res = self._post(url="/v0/aois", model=AOICreate(name=name, geometry=geometry))
         return AOI(**res)
 
     def get_aoi(self, id: str) -> AOI:
-        res = self._get(url=f"/aois/{id}")
+        res = self._get(url=f"/v0/aois/{id}")
         return AOI(**res)
 
     def list_aois(self) -> List[AOI]:
-        res = self._get(url="/aois")
+        res = self._get(url="/v0/aois")
         return [AOI(**record) for record in res["records"]]
 
     def create_data_request(self, aoi_id: str, dataset_id: str) -> DataRequest:
         res = self._post(
-            url="/data-requests",
+            url="/v0/data-requests",
             model=DataRequestCreate(aoi_id=aoi_id, dataset_id=dataset_id),
         )
         return DataRequest(**res)
 
     def get_data_request(self, id: str) -> DataRequest:
-        res = self._get(url=f"/data-requests/{id}")
+        res = self._get(url=f"/v0/data-requests/{id}")
         return DataRequest(**res)
 
     def list_data_requests(self):
-        res = self._get(url="/data-requests")
+        res = self._get(url="/v0/data-requests")
         return [DataRequest(**record) for record in res["records"]]
 
     def create_reprojection(
@@ -65,7 +62,7 @@ class Client:
     ) -> Reprojection:
         # TODO: check if data request is completed before creating reprojection
         res = self._post(
-            url="/reprojections",
+            url="/v0/reprojections",
             model=ReprojectionCreate(
                 data_request_id=data_request_id,
                 crs=crs,
@@ -75,16 +72,16 @@ class Client:
         return Reprojection(**res)
 
     def get_reprojection(self, id: str) -> Reprojection:
-        res = self._get(url=f"/reprojections/{id}")
+        res = self._get(url=f"/v0/reprojections/{id}")
         return Reprojection(**res)
 
     def list_reprojections(self) -> List[Reprojection]:
-        res = self._get(url="/reprojections")
+        res = self._get(url="/v0/reprojections")
         return [Reprojection(**record) for record in res["records"]]
 
     def query(self, sql):
         if self._snowflake_creds is None:
-            res = self._get(url="/data-access-credentials")
+            res = self._get(url="/v0/data-access-credentials")
             self._snowflake_creds = SnowflakeCredentials(**res)
 
         with snowflake.connector.connect(
