@@ -17,8 +17,6 @@ from .models import (
     SnowflakeCredentials,
 )
 
-HTTP_TIMEOUT_SECONDS = 10
-
 # TODO: Documentation (Google style)
 # TODO: Add HTTP retries
 
@@ -107,7 +105,7 @@ class Client:
                 method=method,
                 url=self._base_url + url,
                 auth=self._api_auth,
-                timeout=HTTP_TIMEOUT_SECONDS,
+                timeout=None,
                 **kwargs,
             )
             r.raise_for_status()
