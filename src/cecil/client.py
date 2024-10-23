@@ -79,7 +79,7 @@ class Client:
         res = self._get(url="/v0/reprojections")
         return [Reprojection(**record) for record in res["records"]]
 
-    def query(self, sql):
+    def query(self, sql, database=None):
         if self._snowflake_creds is None:
             res = self._get(url="/v0/data-access-credentials")
             self._snowflake_creds = SnowflakeCredentials(**res)
@@ -88,11 +88,15 @@ class Client:
             account=self._snowflake_creds.account.get_secret_value(),
             user=self._snowflake_creds.user.get_secret_value(),
             password=self._snowflake_creds.password.get_secret_value(),
+            database=database,
         ) as conn:
             df = conn.cursor().execute(sql).fetch_pandas_all()
             df.columns = [x.lower() for x in df.columns]
 
             return df
+
+    def query_raw(self, sql):
+        return self.query(sql, database="RAW_DB")
 
     def _request(self, method: str, url: str, **kwargs) -> Dict:
 
