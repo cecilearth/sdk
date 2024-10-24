@@ -21,7 +21,7 @@ def test_client_create_data_request():
             "AOIID": "aoi_id",
             "DatasetID": "dataset_id",
             "SubRequests": [],
-            "Status": "Processing",
+            "Status": "processing",
             "Created": FROZEN_TIME,
         },
         status=201,
@@ -35,7 +35,7 @@ def test_client_create_data_request():
         AOIID="aoi_id",
         DatasetID="dataset_id",
         SubRequests=[],
-        Status="Processing",
+        Status="processing",
         Created="2024-01-01T00:00:00.000Z",
     )
 
@@ -52,7 +52,7 @@ def test_client_list_data_requests():
                     "AOIID": "aoi_id",
                     "DatasetID": "dataset_id",
                     "SubRequests": [],  # TODO: Add some SubRequests
-                    "Status": "Processing",
+                    "Status": "processing",
                     "Created": "2024-09-19T04:45:57.561Z",
                 },
                 {
@@ -60,7 +60,7 @@ def test_client_list_data_requests():
                     "AOIID": "aoi_id",
                     "DatasetID": "dataset_id",
                     "SubRequests": [],  # TODO: Add some SubRequests
-                    "Status": "Completed",
+                    "Status": "completed",
                     "Created": "2024-09-19T04:54:38.252Z",
                 },
             ]

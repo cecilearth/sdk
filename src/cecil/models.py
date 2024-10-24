@@ -7,14 +7,15 @@ from pydantic.alias_generators import to_camel
 
 
 class SubRequestStatus(str, Enum):
-    COMPLETED = "Completed"
-    FAILED = "Failed"
-    PROCESSING = "Processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    PROCESSING = "processing"
 
 
 class DataRequestStatus(str, Enum):
-    COMPLETED = "Completed"
-    PROCESSING = "Processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    PROCESSING = "processing"
 
 
 class AOI(BaseModel):
