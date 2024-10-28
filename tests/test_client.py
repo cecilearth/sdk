@@ -22,7 +22,8 @@ def test_client_create_data_request():
             "datasetId": "dataset_id",
             "subRequests": [],
             "status": "processing",
-            "created": FROZEN_TIME,
+            "created_at": FROZEN_TIME,
+            "created_by": "user_id",
         },
         status=201,
     )
@@ -36,7 +37,8 @@ def test_client_create_data_request():
         datasetId="dataset_id",
         subRequests=[],
         status="processing",
-        created="2024-01-01T00:00:00.000Z",
+        created_at="2024-01-01T00:00:00.000Z",
+        created_by="user_id",
     )
 
 
@@ -53,7 +55,8 @@ def test_client_list_data_requests():
                     "datasetId": "dataset_id",
                     "subRequests": [],  # TODO: Add some SubRequests
                     "status": "processing",
-                    "created": "2024-09-19T04:45:57.561Z",
+                    "created_at": "2024-09-19T04:45:57.561Z",
+                    "created_by": "user_id",
                 },
                 {
                     "id": "data_request_id_2",
@@ -61,7 +64,8 @@ def test_client_list_data_requests():
                     "datasetId": "dataset_id",
                     "subRequests": [],  # TODO: Add some SubRequests
                     "status": "completed",
-                    "created": "2024-09-19T04:54:38.252Z",
+                    "created_at": "2024-09-19T04:54:38.252Z",
+                    "created_by": "user_id",
                 },
             ]
         },
@@ -77,7 +81,8 @@ def test_client_list_data_requests():
             datasetId="dataset_id",
             subRequests=[],
             status=DataRequestStatus.PROCESSING,
-            created="2024-09-19T04:45:57.561Z",
+            created_at="2024-09-19T04:45:57.561Z",
+            created_by="user_id",
         ),
         DataRequest(
             id="data_request_id_2",
@@ -85,6 +90,7 @@ def test_client_list_data_requests():
             datasetId="dataset_id",
             subRequests=[],
             status=DataRequestStatus.COMPLETED,
-            created="2024-09-19T04:54:38.252Z",
+            created_at="2024-09-19T04:54:38.252Z",
+            created_by="user_id",
         ),
     ]

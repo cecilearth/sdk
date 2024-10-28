@@ -24,7 +24,8 @@ class AOI(BaseModel):
     name: str
     geometry: Dict
     hectares: float
-    created: datetime.datetime
+    created_at: datetime.datetime
+    created_by: str
 
 
 class AOICreate(BaseModel):
@@ -48,7 +49,8 @@ class DataRequest(BaseModel):
     dataset_id: str
     sub_requests: List[SubRequest]
     status: DataRequestStatus
-    created: datetime.datetime
+    created_at: datetime.datetime
+    created_by: str
 
 
 class DataRequestCreate(BaseModel):
@@ -63,7 +65,8 @@ class Reprojection(BaseModel):
     data_request_id: str
     crs: str
     resolution: float
-    created: datetime.datetime
+    created_at: datetime.datetime
+    created_by: str
 
 
 class ReprojectionCreate(BaseModel):
