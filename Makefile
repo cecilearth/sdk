@@ -17,12 +17,17 @@ clean: ## Clean dist
 	$(call HL,clean)
 	hatch clean
 
-.PHONY: publish
-publish: build ## Publish package
-	$(call HL,publish)
+.PHONY: publish-test
+publish-test: build ## Publish package to testpypi
+	$(call HL,publish-test)
 	twine upload --repository testpypi dist/*
+
+.PHONY: publish-prod
+publish-prod: build ## Publish package to pypi
+	$(call HL,publish-prod)
+	twine upload --repository pypi dist/*
 
 .PHONY: test
 test: ## Run tests
-	$(call HL,publish)
+	$(call HL,test)
 	hatch test -v
