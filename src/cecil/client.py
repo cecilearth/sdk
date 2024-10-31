@@ -22,9 +22,13 @@ from .models import (
 
 
 class Client:
-    def __init__(self, env="dev"):
+    def __init__(self, env=None):
         self._api_auth = None
-        self._base_url = f"https://{env}-api.cecil.earth"  # TODO: hard-code to prod URL
+        self._base_url = (
+            "https://api.cecil.earth"
+            if env is None
+            else f"https://{env}-api.cecil.earth"
+        )
         self._snowflake_creds = None
 
     def create_aoi(self, name: str, geometry: Dict) -> AOI:

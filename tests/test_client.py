@@ -8,14 +8,14 @@ FROZEN_TIME = "2024-01-01T00:00:00.000Z"
 
 def test_client_class():
     client = Client()
-    assert client._base_url == "https://dev-api.cecil.earth"
+    assert client._base_url == "https://api.cecil.earth"
 
 
 @responses.activate
 def test_client_create_data_request():
     responses.add(
         responses.POST,
-        "https://dev-api.cecil.earth/v0/data-requests",
+        "https://api.cecil.earth/v0/data-requests",
         json={
             "id": "id",
             "aoiId": "aoi_id",
@@ -46,7 +46,7 @@ def test_client_create_data_request():
 def test_client_list_data_requests():
     responses.add(
         responses.GET,
-        "https://dev-api.cecil.earth/v0/data-requests",
+        "https://api.cecil.earth/v0/data-requests",
         json={
             "records": [
                 {
