@@ -1,12 +1,12 @@
 import os
-from pydantic import BaseModel
 from typing import Dict, List
-import requests
 
+import requests
+import snowflake.connector
+from pydantic import BaseModel
 from requests import auth
 
-import snowflake.connector
-
+from __about__ import __version__
 from .models import (
     AOI,
     AOICreate,
@@ -16,6 +16,7 @@ from .models import (
     ReprojectionCreate,
     SnowflakeCredentials,
 )
+
 
 # TODO: Documentation (Google style)
 # TODO: Add HTTP retries
@@ -100,11 +101,14 @@ class Client:
 
         self._set_auth()
 
+        headers = {"cecil-python-sdk-version": __version__}
+
         try:
             r = requests.request(
                 method=method,
                 url=self._base_url + url,
                 auth=self._api_auth,
+                headers=headers,
                 timeout=None,
                 **kwargs,
             )
