@@ -6,7 +6,6 @@ import snowflake.connector
 from pydantic import BaseModel
 from requests import auth
 
-from __about__ import __version__
 from .models import (
     AOI,
     AOICreate,
@@ -17,6 +16,8 @@ from .models import (
     SnowflakeCredentials,
 )
 
+# TODO: find a way to get this version from __about__.py
+SDK_VERSION = "0.0.11"
 
 # TODO: Documentation (Google style)
 # TODO: Add HTTP retries
@@ -101,7 +102,7 @@ class Client:
 
         self._set_auth()
 
-        headers = {"cecil-python-sdk-version": __version__}
+        headers = {"cecil-python-sdk-version": SDK_VERSION}
 
         try:
             r = requests.request(
