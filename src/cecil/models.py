@@ -59,6 +59,25 @@ class DataRequestCreate(BaseModel):
     dataset_id: str
 
 
+class RecoverAPIKey(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    message: str
+
+
+class RecoverAPIKeyRequest(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    email: str
+
+
+class RotateAPIKey(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    new_api_key: str
+
+
+class RotateAPIKeyRequest(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
+
 class Reprojection(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     id: str

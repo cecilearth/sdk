@@ -13,11 +13,15 @@ from .models import (
     DataRequestCreate,
     Reprojection,
     ReprojectionCreate,
+    RecoverAPIKey,
+    RecoverAPIKeyRequest,
+    RotateAPIKey,
+    RotateAPIKeyRequest,
     SnowflakeCredentials,
 )
 
 # TODO: find a way to get this version from __about__.py
-SDK_VERSION = "0.0.11"
+SDK_VERSION = "0.0.12"
 
 # TODO: Documentation (Google style)
 # TODO: Add HTTP retries
@@ -97,6 +101,19 @@ class Client:
             df.columns = [x.lower() for x in df.columns]
 
             return df
+
+    def recover_api_key(self, email: str) -> RecoverAPIKey:
+        res = self._post(
+            url=f"/v0/recover-api-key",
+            model=RecoverAPIKeyRequest(email=email),
+        )
+
+        return RecoverAPIKey(**res)
+
+    def rotate_api_key(self) -> RotateAPIKey:
+        res = self._post(url=f"/v0/rotate-api-key", model=RotateAPIKeyRequest())
+
+        return RotateAPIKey(**res)
 
     def _request(self, method: str, url: str, **kwargs) -> Dict:
 
