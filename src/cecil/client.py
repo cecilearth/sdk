@@ -21,7 +21,7 @@ from .models import (
 )
 
 # TODO: find a way to get this version from __about__.py
-SDK_VERSION = "0.0.12"
+SDK_VERSION = "0.0.13"
 
 # TODO: Documentation (Google style)
 # TODO: Add HTTP retries
@@ -136,10 +136,11 @@ class Client:
         except requests.exceptions.ConnectionError as err:
             raise ValueError("Connection error") from err
         except requests.exceptions.HTTPError as err:
-            if err.response.status_code == 403:
-                raise ValueError("Authentication error") from err
-            else:
-                raise
+            message = f"Request failed with status code {err.response.status_code}"
+            if err.response.text != "":
+                message += f": {err.response.text}"
+
+            raise ValueError(message) from err
 
     def _get(self, url: str, **kwargs) -> Dict:
         return self._request(method="get", url=url, **kwargs)
