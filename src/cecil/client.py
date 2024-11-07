@@ -21,7 +21,7 @@ from .models import (
 )
 
 # TODO: find a way to get this version from __about__.py
-SDK_VERSION = "0.0.13"
+SDK_VERSION = "0.0.14"
 
 # TODO: Documentation (Google style)
 # TODO: Add HTTP retries
@@ -106,6 +106,7 @@ class Client:
         res = self._post(
             url=f"/v0/recover-api-key",
             model=RecoverAPIKeyRequest(email=email),
+            skip_auth=True,
         )
 
         return RecoverAPIKey(**res)
@@ -115,9 +116,10 @@ class Client:
 
         return RotateAPIKey(**res)
 
-    def _request(self, method: str, url: str, **kwargs) -> Dict:
+    def _request(self, method: str, url: str, skip_auth=False, **kwargs) -> Dict:
 
-        self._set_auth()
+        if skip_auth is False:
+            self._set_auth()
 
         headers = {"cecil-python-sdk-version": SDK_VERSION}
 
@@ -145,9 +147,13 @@ class Client:
     def _get(self, url: str, **kwargs) -> Dict:
         return self._request(method="get", url=url, **kwargs)
 
-    def _post(self, url: str, model: BaseModel, **kwargs) -> Dict:
+    def _post(self, url: str, model: BaseModel, skip_auth=False, **kwargs) -> Dict:
         return self._request(
-            method="post", url=url, json=model.model_dump(by_alias=True), **kwargs
+            method="post",
+            url=url,
+            json=model.model_dump(by_alias=True),
+            skip_auth=skip_auth,
+            **kwargs,
         )
 
     def _set_auth(self) -> None:
