@@ -6,6 +6,13 @@ import snowflake.connector
 from pydantic import BaseModel
 from requests import auth
 
+from .errors import (
+    Error,
+    _handle_bad_request,
+    _handle_not_found,
+    _handle_unprocessable_entity,
+)
+
 from .models import (
     AOI,
     AOICreate,
@@ -21,7 +28,7 @@ from .models import (
 )
 
 # TODO: find a way to get this version from __about__.py
-SDK_VERSION = "0.0.14"
+SDK_VERSION = "0.0.15"
 
 # TODO: Documentation (Google style)
 # TODO: Add HTTP retries
@@ -135,14 +142,25 @@ class Client:
             r.raise_for_status()
             return r.json()
 
-        except requests.exceptions.ConnectionError as err:
-            raise ValueError("Connection error") from err
+        except requests.exceptions.ConnectionError:
+            raise Error("failed to connect to the Cecil Platform")
         except requests.exceptions.HTTPError as err:
-            message = f"Request failed with status code {err.response.status_code}"
-            if err.response.text != "":
-                message += f": {err.response.text}"
-
-            raise ValueError(message) from err
+            match err.response.status_code:
+                case 400:
+                    _handle_bad_request(err.response)
+                case 401:
+                    raise Error("unauthorised")
+                case 404:
+                    _handle_not_found(err.response)
+                case 422:
+                    _handle_unprocessable_entity(err.response)
+                case 500:
+                    raise Error("internal server error")
+                case _:
+                    raise Error(
+                        f"request failed with code {err.response.status_code}",
+                        err.response.text,
+                    )
 
     def _get(self, url: str, **kwargs) -> Dict:
         return self._request(method="get", url=url, **kwargs)
