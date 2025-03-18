@@ -9,9 +9,8 @@ indent_size = 4
 tab_width = 4
 trim_trailing_whitespace = true
 
-[{*.tf}]
+[*.tf]
 indent_size = 2
-tab_width = 2
 
 [{*.go,Makefile}]
 indent_style = tab
