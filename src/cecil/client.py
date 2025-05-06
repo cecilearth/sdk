@@ -18,8 +18,8 @@ from .models import (
     AOICreate,
     DataRequest,
     DataRequestCreate,
-    Reprojection,
-    ReprojectionCreate,
+    Transformation,
+    TransformationCreate,
     RecoverAPIKey,
     RecoverAPIKeyRequest,
     RotateAPIKey,
@@ -38,9 +38,7 @@ class Client:
     def __init__(self, env=None):
         self._api_auth = None
         self._base_url = (
-            "https://api.cecil.earth"
-            if env is None
-            else f"https://{env}-api.cecil.earth"
+            "https://api.cecil.earth" if env is None else f"https://{env}.cecil.earth"
         )
         self._snowflake_creds = None
 
@@ -72,27 +70,27 @@ class Client:
         res = self._get(url="/v0/data-requests")
         return [DataRequest(**record) for record in res["records"]]
 
-    def create_reprojection(
-        self, data_request_id: str, crs: str, resolution: float
-    ) -> Reprojection:
-        # TODO: check if data request is completed before creating reprojection
+    def create_transformation(
+        self, data_request_id: str, crs: str, spatial_resolution: float
+    ) -> Transformation:
+        # TODO: check if data request is completed before creating transformation
         res = self._post(
-            url="/v0/reprojections",
-            model=ReprojectionCreate(
+            url="/v0/transformations",
+            model=TransformationCreate(
                 data_request_id=data_request_id,
                 crs=crs,
-                resolution=resolution,
+                spatial_resolution=spatial_resolution,
             ),
         )
-        return Reprojection(**res)
+        return Transformation(**res)
 
-    def get_reprojection(self, id: str) -> Reprojection:
-        res = self._get(url=f"/v0/reprojections/{id}")
-        return Reprojection(**res)
+    def get_transformation(self, id: str) -> Transformation:
+        res = self._get(url=f"/v0/transformations/{id}")
+        return Transformation(**res)
 
-    def list_reprojections(self) -> List[Reprojection]:
-        res = self._get(url="/v0/reprojections")
-        return [Reprojection(**record) for record in res["records"]]
+    def list_transformations(self) -> List[Transformation]:
+        res = self._get(url="/v0/transformations")
+        return [Transformation(**record) for record in res["records"]]
 
     def query(self, sql):
         if self._snowflake_creds is None:

@@ -55,30 +55,30 @@ my_data_request = client.create_data_request(
     dataset_id=planet_forest_carbon_diligence_id,
 )
 
-print(client.get_data_request(my_data_request.id).status)
+print(client.get_data_request(my_data_request.id))
 ```
 
-### Create a reprojection using the Cecil client (once data request is completed)
+### Create a transformation using the Cecil client
 
 ```python
-my_reprojection = client.create_reprojection(
+my_transformation = client.create_transformation(
     data_request_id=my_data_request.id,
     crs="EPSG:4326",
-    resolution=0.005,
+    spatial_resolution=0.005,
 )
 
-print(client.get_reprojection(my_reprojection.id).status)
+print(client.get_transformation(my_transformation.id))
 ```
 
-### Query data (once reprojection is completed)
+### Query data (once transformation is completed)
 
 ```python
 df = client.query(f'''
     SELECT *
-    FROM 
+    FROM
         planet.forest_carbon_diligence
     WHERE
-        reprojection_id = '{my_reprojection.id}'
+        transformation_id = '{my_transformation.id}'
 ''')
 ```
 
@@ -93,9 +93,9 @@ client.list_data_requests()
 
 client.get_data_request(my_data_request.id)
 
-client.list_reprojections()
+client.list_transformations()
 
-client.get_reprojection(my_reprojection.id)
+client.get_transformation(my_transformation.id)
 ```
 
 ## License
