@@ -1,10 +1,11 @@
 import os
-from typing import Dict, List
-
 import requests
 import snowflake.connector
+
+from importlib.metadata import version
 from pydantic import BaseModel
 from requests import auth
+from typing import Dict, List
 
 from .errors import (
     Error,
@@ -27,8 +28,7 @@ from .models import (
     SnowflakeCredentials,
 )
 
-# TODO: find a way to get this version from __about__.py
-SDK_VERSION = "0.0.15"
+from .version import __version__
 
 # TODO: Documentation (Google style)
 # TODO: Add HTTP retries
@@ -126,7 +126,7 @@ class Client:
         if skip_auth is False:
             self._set_auth()
 
-        headers = {"cecil-python-sdk-version": SDK_VERSION}
+        headers = {"cecil-python-sdk-version": __version__}
 
         try:
             r = requests.request(

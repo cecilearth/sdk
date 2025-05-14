@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [tool.hatch.version]
-path = "__about__.py"
+path = "src/cecil/version.py"
 
 [tool.hatch.envs.hatch-test]
 extra-dependencies = [
