@@ -2,7 +2,6 @@ import os
 import requests
 import snowflake.connector
 
-from importlib.metadata import version
 from pydantic import BaseModel
 from requests import auth
 from typing import Dict, List
