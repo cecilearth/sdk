@@ -36,6 +36,18 @@ class DataRequestCreate(BaseModel):
     dataset_id: str
 
 
+class Organisation(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    id: str
+    name: str
+    created_at: datetime.datetime
+
+
+class OrganisationCreate(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    name: str
+
+
 class RecoverAPIKey(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     message: str
@@ -77,3 +89,31 @@ class SnowflakeCredentials(BaseModel):
     account: SecretStr
     user: SecretStr
     password: SecretStr
+
+
+class User(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    id: str
+    first_name: str
+    last_name: str
+    email: str
+    created_at: str
+
+
+class UserCreate(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    first_name: str
+    last_name: str
+    email: str
+
+
+class SignUpRequest(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    organisation: OrganisationCreate
+    user: UserCreate
+
+
+class SignUpResponse(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    organisation: Organisation
+    user: User

@@ -18,19 +18,22 @@ from .models import (
     AOICreate,
     DataRequest,
     DataRequestCreate,
-    Transformation,
-    TransformationCreate,
+    Organisation,
+    OrganisationCreate,
     RecoverAPIKey,
     RecoverAPIKeyRequest,
     RotateAPIKey,
     RotateAPIKeyRequest,
+    SignUpRequest,
+    SignUpResponse,
     SnowflakeCredentials,
+    Transformation,
+    TransformationCreate,
+    User,
+    UserCreate,
 )
 
 from .version import __version__
-
-# TODO: Documentation (Google style)
-# TODO: Add HTTP retries
 
 
 class Client:
@@ -108,7 +111,7 @@ class Client:
 
     def recover_api_key(self, email: str) -> RecoverAPIKey:
         res = self._post(
-            url=f"/v0/recover-api-key",
+            url="/v0/recover-api-key",
             model=RecoverAPIKeyRequest(email=email),
             skip_auth=True,
         )
@@ -119,6 +122,28 @@ class Client:
         res = self._post(url=f"/v0/rotate-api-key", model=RotateAPIKeyRequest())
 
         return RotateAPIKey(**res)
+
+    def sign_up(
+        self,
+        organisation_name: str,
+        user_first_name: str,
+        user_last_name: str,
+        user_email: str,
+    ):
+        res = self._post(
+            url="/v0/sign-up",
+            model=SignUpRequest(
+                organisation=OrganisationCreate(name=organisation_name),
+                user=UserCreate(
+                    first_name=user_first_name,
+                    last_name=user_last_name,
+                    email=user_email,
+                ),
+            ),
+            skip_auth=True,
+        )
+
+        return SignUpResponse(**res)
 
     def _request(self, method: str, url: str, skip_auth=False, **kwargs) -> Dict:
 
