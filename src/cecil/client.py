@@ -1,10 +1,10 @@
 import os
+from typing import Dict, List
+
 import requests
 import snowflake.connector
-
 from pydantic import BaseModel
 from requests import auth
-from typing import Dict, List
 
 from .errors import (
     Error,
@@ -12,13 +12,11 @@ from .errors import (
     _handle_not_found,
     _handle_unprocessable_entity,
 )
-
 from .models import (
     AOI,
     AOICreate,
     DataRequest,
     DataRequestCreate,
-    Organisation,
     OrganisationCreate,
     RecoverAPIKey,
     RecoverAPIKeyRequest,
@@ -32,7 +30,6 @@ from .models import (
     User,
     UserCreate,
 )
-
 from .version import __version__
 
 
@@ -75,7 +72,6 @@ class Client:
     def create_transformation(
         self, data_request_id: str, crs: str, spatial_resolution: float
     ) -> Transformation:
-        # TODO: check if data request is completed before creating transformation
         res = self._post(
             url="/v0/transformations",
             model=TransformationCreate(
@@ -144,6 +140,25 @@ class Client:
         )
 
         return SignUpResponse(**res)
+
+    def create_user(self, first_name: str, last_name: str, email: str) -> User:
+        res = self._post(
+            url="/v0/users",
+            model=UserCreate(
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
+            ),
+        )
+        return User(**res)
+
+    def get_user(self, id: str) -> User:
+        res = self._get(url=f"/v0/users/{id}")
+        return User(**res)
+
+    def list_users(self) -> List[User]:
+        res = self._get(url="/v0/users")
+        return [User(**record) for record in res["records"]]
 
     def _request(self, method: str, url: str, skip_auth=False, **kwargs) -> Dict:
 
