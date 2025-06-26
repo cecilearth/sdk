@@ -47,6 +47,18 @@ def _handle_not_found(response):
     raise Error("resource not found", details)
 
 
+def _handle_too_many_requests(response):
+    if not _is_json(response.text):
+        raise Error("too many requests")
+
+    details = {}
+
+    for key, value in response.json().items():
+        details[_format_json_key(key)] = value
+
+    raise Error("too many requests", details)
+
+
 def _handle_unprocessable_entity(response):
     if not _is_json(response.text):
         raise Error(f"failed to process request")

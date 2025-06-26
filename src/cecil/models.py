@@ -36,13 +36,6 @@ class DataRequestCreate(BaseModel):
     dataset_id: str
 
 
-class Organisation(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-    id: str
-    name: str
-    created_at: datetime.datetime
-
-
 class OrganisationCreate(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     name: str
@@ -98,6 +91,7 @@ class User(BaseModel):
     last_name: str
     email: str
     created_at: datetime.datetime
+    created_by: str
 
 
 class UserCreate(BaseModel):
@@ -115,5 +109,4 @@ class SignUpRequest(BaseModel):
 
 class SignUpResponse(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-    organisation: Organisation
-    user: User
+    message: str

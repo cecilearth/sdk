@@ -1,6 +1,7 @@
 import os
 from typing import Dict, List
 
+import pandas as pd
 import requests
 import snowflake.connector
 from pydantic import BaseModel
@@ -10,6 +11,7 @@ from .errors import (
     Error,
     _handle_bad_request,
     _handle_not_found,
+    _handle_too_many_requests,
     _handle_unprocessable_entity,
 )
 from .models import (
@@ -34,7 +36,7 @@ from .version import __version__
 
 
 class Client:
-    def __init__(self, env=None):
+    def __init__(self, env: str = None) -> None:
         self._api_auth = None
         self._base_url = (
             "https://api.cecil.earth" if env is None else f"https://{env}.cecil.earth"
@@ -65,7 +67,7 @@ class Client:
         res = self._get(url=f"/v0/data-requests/{id}")
         return DataRequest(**res)
 
-    def list_data_requests(self):
+    def list_data_requests(self) -> List[DataRequest]:
         res = self._get(url="/v0/data-requests")
         return [DataRequest(**record) for record in res["records"]]
 
@@ -90,7 +92,7 @@ class Client:
         res = self._get(url="/v0/transformations")
         return [Transformation(**record) for record in res["records"]]
 
-    def query(self, sql):
+    def query(self, sql: str) -> pd.DataFrame:
         if self._snowflake_creds is None:
             res = self._get(url="/v0/data-access-credentials")
             self._snowflake_creds = SnowflakeCredentials(**res)
@@ -125,7 +127,7 @@ class Client:
         user_first_name: str,
         user_last_name: str,
         user_email: str,
-    ):
+    ) -> SignUpResponse:
         res = self._post(
             url="/v0/sign-up",
             model=SignUpRequest(
@@ -181,7 +183,12 @@ class Client:
 
         except requests.exceptions.ConnectionError:
             raise Error("failed to connect to the Cecil Platform")
+
         except requests.exceptions.HTTPError as err:
+            message = f"Request failed with status code {err.response.status_code}"
+            if err.response.text != "":
+                message += f": {err.response.text}"
+
             match err.response.status_code:
                 case 400:
                     _handle_bad_request(err.response)
@@ -191,6 +198,8 @@ class Client:
                     _handle_not_found(err.response)
                 case 422:
                     _handle_unprocessable_entity(err.response)
+                case 429:
+                    _handle_too_many_requests(err.response)
                 case 500:
                     raise Error("internal server error")
                 case _:
