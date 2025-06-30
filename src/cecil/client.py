@@ -109,7 +109,7 @@ class Client:
 
     def recover_api_key(self, email: str) -> RecoverAPIKey:
         res = self._post(
-            url="/v0/recover-api-key",
+            url="/v0/api-key/recover",
             model=RecoverAPIKeyRequest(email=email),
             skip_auth=True,
         )
@@ -117,7 +117,7 @@ class Client:
         return RecoverAPIKey(**res)
 
     def rotate_api_key(self) -> RotateAPIKey:
-        res = self._post(url=f"/v0/rotate-api-key", model=RotateAPIKeyRequest())
+        res = self._post(url=f"/v0/api-key/rotate", model=RotateAPIKeyRequest())
 
         return RotateAPIKey(**res)
 
