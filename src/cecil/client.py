@@ -122,21 +122,13 @@ class Client:
         return RotateAPIKey(**res)
 
     def sign_up(
-        self,
-        organisation_name: str,
-        user_first_name: str,
-        user_last_name: str,
-        user_email: str,
+        self, organisation: Dict[str, str], user: Dict[str, str]
     ) -> SignUpResponse:
         res = self._post(
             url="/v0/sign-up",
             model=SignUpRequest(
-                organisation=OrganisationCreate(name=organisation_name),
-                user=UserCreate(
-                    first_name=user_first_name,
-                    last_name=user_last_name,
-                    email=user_email,
-                ),
+                organisation=OrganisationCreate(**organisation),
+                user=UserCreate(**user),
             ),
             skip_auth=True,
         )
