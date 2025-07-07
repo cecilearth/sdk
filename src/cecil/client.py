@@ -6,6 +6,7 @@ import requests
 import snowflake.connector
 from pydantic import BaseModel
 from requests import auth
+from cryptography.hazmat.primitives import serialization
 
 from .errors import (
     Error,
@@ -26,7 +27,7 @@ from .models import (
     RotateAPIKeyRequest,
     SignUpRequest,
     SignUpResponse,
-    SnowflakeCredentials,
+    SnowflakeUserCredentials,
     Transformation,
     TransformationCreate,
     User,
@@ -41,7 +42,7 @@ class Client:
         self._base_url = (
             "https://api.cecil.earth" if env is None else f"https://{env}.cecil.earth"
         )
-        self._snowflake_creds = None
+        self._snowflake_user_creds = None
 
     def create_aoi(self, name: str, geometry: Dict) -> AOI:
         # TODO: validate geometry
@@ -93,14 +94,19 @@ class Client:
         return [Transformation(**record) for record in res["records"]]
 
     def query(self, sql: str) -> pd.DataFrame:
-        if self._snowflake_creds is None:
-            res = self._get(url="/v0/data-access-credentials")
-            self._snowflake_creds = SnowflakeCredentials(**res)
+        if self._snowflake_user_creds is None:
+            res = self._get(url="/v0/snowflake-user-credentials")
+            self._snowflake_user_creds = SnowflakeUserCredentials(**res)
+
+        private_key = serialization.load_pem_private_key(
+            self._snowflake_user_creds.private_key.get_secret_value().encode(),
+            password=None,
+        )
 
         with snowflake.connector.connect(
-            account=self._snowflake_creds.account.get_secret_value(),
-            user=self._snowflake_creds.user.get_secret_value(),
-            password=self._snowflake_creds.password.get_secret_value(),
+            account=self._snowflake_user_creds.account.get_secret_value(),
+            user=self._snowflake_user_creds.user.get_secret_value(),
+            private_key=private_key,
         ) as conn:
             df = conn.cursor().execute(sql).fetch_pandas_all()
             df.columns = [x.lower() for x in df.columns]

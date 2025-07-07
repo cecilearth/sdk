@@ -77,11 +77,11 @@ class TransformationCreate(BaseModel):
     spatial_resolution: float
 
 
-class SnowflakeCredentials(BaseModel):
+class SnowflakeUserCredentials(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     account: SecretStr
     user: SecretStr
-    password: SecretStr
+    private_key: SecretStr
 
 
 class User(BaseModel):
