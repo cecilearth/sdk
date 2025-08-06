@@ -21,6 +21,7 @@ from .models import (
     DataRequest,
     DataRequestCreate,
     OrganisationCreate,
+    OrganisationSettings,
     RecoverAPIKey,
     RecoverAPIKeyRequest,
     RotateAPIKey,
@@ -159,6 +160,23 @@ class Client:
     def list_users(self) -> List[User]:
         res = self._get(url="/v0/users")
         return [User(**record) for record in res["records"]]
+
+    def get_organisation_settings(self) -> OrganisationSettings:
+        res = self._get(url="/v0/organisation/settings")
+        return OrganisationSettings(**res)
+
+    def update_organisation_settings(
+        self,
+        *,
+        monthly_data_request_limit,
+    ) -> OrganisationSettings:
+        res = self._post(
+            url="/v0/organisation/settings",
+            model=OrganisationSettings(
+                monthly_data_request_limit=monthly_data_request_limit,
+            ),
+        )
+        return OrganisationSettings(**res)
 
     def _request(self, method: str, url: str, skip_auth=False, **kwargs) -> Dict:
 

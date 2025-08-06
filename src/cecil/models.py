@@ -1,5 +1,5 @@
 import datetime
-from typing import Dict
+from typing import Dict, Optional
 
 from pydantic import BaseModel, ConfigDict, SecretStr
 from pydantic.alias_generators import to_camel
@@ -39,6 +39,11 @@ class DataRequestCreate(BaseModel):
 class OrganisationCreate(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     name: str
+
+
+class OrganisationSettings(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    monthly_data_request_limit: Optional[int] = None
 
 
 class RecoverAPIKey(BaseModel):
