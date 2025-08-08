@@ -15,6 +15,15 @@ class AOI(BaseModel):
     created_by: str
 
 
+class AOIRecord(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    id: str
+    name: str
+    hectares: float
+    created_at: datetime.datetime
+    created_by: str
+
+
 class AOICreate(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     name: str

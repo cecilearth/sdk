@@ -17,6 +17,7 @@ from .errors import (
 )
 from .models import (
     AOI,
+    AOIRecord,
     AOICreate,
     DataRequest,
     DataRequestCreate,
@@ -54,9 +55,9 @@ class Client:
         res = self._get(url=f"/v0/aois/{id}")
         return AOI(**res)
 
-    def list_aois(self) -> List[AOI]:
+    def list_aois(self) -> List[AOIRecord]:
         res = self._get(url="/v0/aois")
-        return [AOI(**record) for record in res["records"]]
+        return [AOIRecord(**record) for record in res["records"]]
 
     def create_data_request(self, aoi_id: str, dataset_id: str) -> DataRequest:
         res = self._post(
