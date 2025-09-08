@@ -21,14 +21,11 @@ from .models import (
     AOICreate,
     DataRequest,
     DataRequestCreate,
-    OrganisationCreate,
     OrganisationSettings,
     RecoverAPIKey,
     RecoverAPIKeyRequest,
     RotateAPIKey,
     RotateAPIKeyRequest,
-    SignUpRequest,
-    SignUpResponse,
     SnowflakeUserCredentials,
     Transformation,
     TransformationCreate,
@@ -128,20 +125,6 @@ class Client:
         res = self._post(url=f"/v0/api-key/rotate", model=RotateAPIKeyRequest())
 
         return RotateAPIKey(**res)
-
-    def sign_up(
-        self, organisation: Dict[str, str], user: Dict[str, str]
-    ) -> SignUpResponse:
-        res = self._post(
-            url="/v0/sign-up",
-            model=SignUpRequest(
-                organisation=OrganisationCreate(**organisation),
-                user=UserCreate(**user),
-            ),
-            skip_auth=True,
-        )
-
-        return SignUpResponse(**res)
 
     def create_user(self, first_name: str, last_name: str, email: str) -> User:
         res = self._post(

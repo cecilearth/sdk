@@ -45,11 +45,6 @@ class DataRequestCreate(BaseModel):
     dataset_id: str
 
 
-class OrganisationCreate(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-    name: str
-
-
 class OrganisationSettings(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     monthly_data_request_limit: Optional[int] = None
@@ -113,14 +108,3 @@ class UserCreate(BaseModel):
     first_name: str
     last_name: str
     email: str
-
-
-class SignUpRequest(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-    organisation: OrganisationCreate
-    user: UserCreate
-
-
-class SignUpResponse(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-    message: str
