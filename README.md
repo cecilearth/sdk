@@ -5,7 +5,7 @@
 
 -----
 
-## Table o f Contents
+## Table of Contents
 
 - [Installation](#installation)
 - [Authentication](#authentication)

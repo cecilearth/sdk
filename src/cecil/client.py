@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from typing import Dict, List
 
 import pandas as pd
@@ -7,6 +8,8 @@ import snowflake.connector
 from pydantic import BaseModel
 from requests import auth
 from cryptography.hazmat.primitives import serialization
+import xarray as xr
+import rioxarray as rio
 
 from .errors import (
     Error,
@@ -30,7 +33,7 @@ from .models import (
     Transformation,
     TransformationCreate,
     User,
-    UserCreate,
+    UserCreate, DataRequestInfo,
 )
 from .version import __version__
 
@@ -70,6 +73,120 @@ class Client:
     def list_data_requests(self) -> List[DataRequest]:
         res = self._get(url="/v0/data-requests")
         return [DataRequest(**record) for record in res["records"]]
+
+    def get_xarray(self, id: str):
+        res = self._get(url=f"/v0/data-requests/{id}/xarray")
+        object = DataRequestInfo(**res)
+
+        all_variables = set()
+        for file_info in object.files:
+            for band_info in file_info.bands:
+                all_variables.add(band_info.variable_name)
+
+        var_to_files = {}
+
+        for file_info in object.files:
+            for band_num, band_info in file_info.bands.items():
+                var_name = band_info.variable_name
+
+                if var_name not in var_to_files:
+                    var_to_files[var_name] = []
+
+                var_to_files[var_name].append({
+                    'file_info': file_info,
+                    'band_number': int(band_num),
+                    'band_info': band_info
+                })
+
+        datasets = {}
+
+        for var_name, file_band_list in var_to_files.items():
+
+            time_series = []
+
+            def sort_key(x):
+                time_str = x['band_info']['time']
+                if time_str in ['n/a', None]:
+                    return datetime.min  # Put n/a times first
+                try:
+                    return datetime.strptime(time_str, '%Y')
+                except:
+                    try:
+                        return datetime.strptime(time_str, '%Y-%m-%d')
+                    except:
+                        return datetime.min
+
+            file_band_list.sort(key=sort_key)
+
+            for item in file_band_list:
+                file_info = item.file_info
+                band_num = item.band_number
+                band_info = item.band_info
+
+                try:
+                    da = rio.open_rasterio(file_info.url, chunks={'x': 2000, 'y': 2000})
+                    da_band = da.sel(band=band_num, drop=True)
+                    time_coord = None
+
+                    time_str = band_info.time
+                    if time_str:
+                        try:
+                            for fmt in ['%Y-%m-%d', '%Y']:
+                                try:
+                                    time_coord = datetime.strptime(time_str, fmt)
+                                    break
+                                except ValueError:
+                                    continue
+                        except Exception as e:
+                            raise Error
+
+                    if time_coord is not None:
+                        da_band = da_band.expand_dims('time')
+                        da_band = da_band.assign_coords(time=[time_coord])
+
+                    da_band.name = var_name
+
+                    # Add this band to the time_series list
+                    time_series.append(da_band)
+
+                except Exception as e:
+                    raise Error
+
+            if time_series:
+                has_time_dims = [ts for ts in time_series if 'time' in ts.dims]
+                no_time_dims = [ts for ts in time_series if 'time' not in ts.dims]
+
+                processed_series = []
+
+                # Handle arrays with time dimensions
+                if has_time_dims:
+                    if align_grids:
+                        aligned_series = align_pixel_grids(has_time_dims)
+                    else:
+                        aligned_series = has_time_dims
+
+                    # Concatenate along time dimension if multiple timesteps
+                    if len(aligned_series) > 1:
+                        time_data = xr.concat(aligned_series, dim='time')
+                    else:
+                        time_data = aligned_series[0]
+
+                    processed_series.append(time_data)
+
+                # Handle static data
+                if no_time_dims:
+                    processed_series.extend(no_time_dims)
+
+                # Use the first processed series as the variable data
+                var_data = processed_series[0]
+
+                datasets[var_name] = var_data
+                print(f"  Successfully loaded {var_name}")
+
+            # If no time series for this variable
+            else:
+                print(f"  Warning: No data successfully loaded for {var_name}")
+
 
     def create_transformation(
         self, data_request_id: str, crs: str, spatial_resolution: float

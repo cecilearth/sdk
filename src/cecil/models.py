@@ -108,3 +108,26 @@ class UserCreate(BaseModel):
     first_name: str
     last_name: str
     email: str
+
+
+class Band(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    variable_name: str
+    time: str
+
+
+class File(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    url: str
+    band: Dict[str, Band]
+
+
+class DataRequestInfo(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    provider_name: str
+    dataset_id: str
+    dataset_name: str
+    dataset_crs: str
+    aoi_id: str
+    data_request_id: str
+    files: List[File]
