@@ -112,7 +112,7 @@ class Client:
             def sort_key(x):
                 time_str = x["band_info"].time
                 if time_str in ["n/a", None]:
-                    return datetime.min  # Put n/a times first
+                    return datetime.min
                 try:
                     return datetime.strptime(time_str, "%Y")
                 except:
@@ -151,7 +151,6 @@ class Client:
 
                     da_band.name = var_name
 
-                    # Add this band to the time_series list
                     time_series.append(da_band)
 
                 except Exception as e:
@@ -163,10 +162,7 @@ class Client:
 
                 processed_series = []
 
-                # Handle arrays with time dimensions
                 if has_time_dims:
-
-                    # Concatenate along time dimension if multiple timesteps
                     if len(has_time_dims) > 1:
                         time_data = xr.concat(has_time_dims, dim="time")
                     else:
@@ -174,17 +170,13 @@ class Client:
 
                     processed_series.append(time_data)
 
-                # Handle static data
                 if no_time_dims:
                     processed_series.extend(no_time_dims)
-
-                # Use the first processed series as the variable data
                 var_data = processed_series[0]
 
                 datasets[var_name] = var_data
                 print(f"  Successfully loaded {var_name}")
 
-            # If no time series for this variable
             else:
                 print(f"  Warning: No data successfully loaded for {var_name}")
 
@@ -194,10 +186,8 @@ class Client:
             print(f"Warning: Could not combine all variables into single dataset: {e}")
             print("Creating dataset with compatible variables only...")
 
-            # Try to group variables by compatible dimensions
             compatible_vars = {}
             for var_name, var_data in datasets.items():
-                # Create a key based on spatial dimensions
                 spatial_dims = tuple(
                     sorted(
                         [
@@ -216,7 +206,6 @@ class Client:
                     compatible_vars[key] = {}
                 compatible_vars[key][var_name] = var_data
 
-            # Use the group with the most variables, or the first one
             if compatible_vars:
                 best_group = max(compatible_vars.values(), key=len)
                 combined_ds = xr.Dataset(best_group)
@@ -227,7 +216,6 @@ class Client:
                         f"Note: Excluded variables due to incompatible dimensions: {excluded_vars}"
                     )
             else:
-                # Fallback: just use the first variable
                 first_var = list(datasets.keys())[0]
                 combined_ds = xr.Dataset({first_var: datasets[first_var]})
                 print(f"Fallback: Using only {first_var}")
