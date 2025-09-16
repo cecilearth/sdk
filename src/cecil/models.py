@@ -1,5 +1,5 @@
 import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from pydantic import BaseModel, ConfigDict, SecretStr
 from pydantic.alias_generators import to_camel
@@ -119,7 +119,7 @@ class Band(BaseModel):
 class File(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     url: str
-    band: Dict[str, Band]
+    bands: Dict[str, Band]
 
 
 class DataRequestInfo(BaseModel):
