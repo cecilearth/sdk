@@ -49,7 +49,7 @@ def load_xarray(data_request_metadata: DataRequestMetadata) -> xarray.Dataset:
     var_to_files = {}
 
     for file_info in data_request_metadata.files:
-        for band_num, band_info in file_info.bands.items():
+        for band_info in file_info.bands:
             var_name = band_info.variable_name
 
             if var_name not in var_to_files:
@@ -58,7 +58,7 @@ def load_xarray(data_request_metadata: DataRequestMetadata) -> xarray.Dataset:
             var_to_files[var_name].append(
                 {
                     "file_info": file_info,
-                    "band_number": int(band_num),
+                    "band_number": band_info.number,
                     "band_info": band_info,
                 }
             )
