@@ -17,8 +17,8 @@ def load_xarray_v2(data_request_metadata: DataRequestMetadata) -> xarray.Dataset
             time_series = []
             band = dataset.sel(band=b.number, drop=True)
 
-            time = band.time
-            pattern = band.time_pattern
+            time = b.time
+            pattern = b.time_pattern
             # validate why we need this min value
             time_coord = (
                 datetime.min if time is None else datetime.strptime(time, pattern)
@@ -26,10 +26,11 @@ def load_xarray_v2(data_request_metadata: DataRequestMetadata) -> xarray.Dataset
 
             band = band.expand_dims("time")
             band = band.assign_coords(time=[time_coord])
-            band.name = band.variable_name
+            band.name = b.variable_name
             time_series.append(band)
 
             # todo append time series to datasets
+
 
     dataset = xarray.Dataset(datasets)
     dataset.attrs.update(
