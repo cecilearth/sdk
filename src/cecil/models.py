@@ -114,15 +114,17 @@ class Band(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     variable_name: str
     time: str
+    time_pattern: str
+    number: int
 
 
 class File(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     url: str
-    bands: Dict[str, Band]
+    bands: List[Band]
 
 
-class DataRequestInfo(BaseModel):
+class DataRequestMetadata(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     provider_name: str
     dataset_id: str
