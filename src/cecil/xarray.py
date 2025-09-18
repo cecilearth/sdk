@@ -15,9 +15,12 @@ def load_xarray_v2(data_request_metadata: DataRequestMetadata) -> xarray.Dataset
 
         for b in f.bands:
             band = dataset.sel(band=b.number, drop=True)
-            time = datetime.strptime(b.time, b.time_pattern) # hansen
-            band = band.expand_dims("time")
-            band = band.assign_coords(time=[time])
+
+            if b['time'] and b['time_pattern']: # datasets with time dimension
+                time = datetime.strptime(b.time, b.time_pattern)
+                band = band.expand_dims("time")
+                band = band.assign_coords(time=[time])
+
             band.name = b.variable_name
 
             if b.variable_name not in data_vars:
@@ -25,8 +28,11 @@ def load_xarray_v2(data_request_metadata: DataRequestMetadata) -> xarray.Dataset
 
             data_vars[b.variable_name].append(band)
 
-    for variable_name, time_series in data_vars:
-        data_vars[variable_name] = xarray.concat(time_series, dim="time") # hansen/jrc/others
+    for variable_name, time_series in data_vars.items():
+        if 'time' in time_series[0].dims: # concatenate datasets with time dimension
+            data_vars[variable_name] = xarray.concat(time_series, dim="time")
+        else: # if no time dimension, cannot concatenate on dim='time'
+            data_vars[variable_name] = time_series[0]
 
     return xarray.Dataset(
         data_vars=data_vars,
