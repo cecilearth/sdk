@@ -8,33 +8,29 @@ from .models import DataRequestMetadata
 
 
 def load_xarray_v2(data_request_metadata: DataRequestMetadata) -> xarray.Dataset:
-    datasets = {}
+    data_vars = {}
 
-    for file in data_request_metadata.files:
-        dataset = rioxarray.open_rasterio(file.url, chunks={"x": 2000, "y": 2000})
+    for f in data_request_metadata.files:
+        dataset = rioxarray.open_rasterio(f.url, chunks={"x": 2000, "y": 2000})
 
-        for b in file.bands:
-            time_series = []
+        for b in f.bands:
             band = dataset.sel(band=b.number, drop=True)
-
-            time = b.time
-            pattern = b.time_pattern
-            # validate why we need this min value
-            time_coord = (
-                datetime.min if time is None else datetime.strptime(time, pattern)
-            )
-
+            time = datetime.strptime(b.time, b.time_pattern) # hansen
             band = band.expand_dims("time")
-            band = band.assign_coords(time=[time_coord])
+            band = band.assign_coords(time=[time])
             band.name = b.variable_name
-            time_series.append(band)
 
-            # todo append time series to datasets
+            if b.variable_name not in data_vars:
+                data_vars[b.variable_name] = []
 
+            data_vars[b.variable_name].append(band)
 
-    dataset = xarray.Dataset(datasets)
-    dataset.attrs.update(
-        {
+    for variable_name, time_series in data_vars:
+        data_vars[variable_name] = xarray.concat(time_series, dim="time") # hansen/jrc/others
+
+    return xarray.Dataset(
+        data_vars=data_vars,
+        attrs={
             "dataset_name": data_request_metadata.dataset_name,
             "dataset_id": data_request_metadata.dataset_id,
             "aoi_id": data_request_metadata.aoi_id,
@@ -42,8 +38,6 @@ def load_xarray_v2(data_request_metadata: DataRequestMetadata) -> xarray.Dataset
             "crs": data_request_metadata.dataset_crs,
         }
     )
-
-    return dataset
 
 
 def load_xarray(data_request_metadata: DataRequestMetadata) -> xarray.Dataset:
