@@ -6,17 +6,32 @@ from datetime import datetime
 from .errors import Error
 from .models import DataRequestMetadata
 
+def align_pixel_grids(time_series):
+    # Use the first timestep as reference
+    reference_da = time_series[0]
+    aligned_series = [reference_da]
 
-def load_xarray_v2(data_request_metadata: DataRequestMetadata) -> xarray.Dataset:
+    # Align all other timesteps to the reference grid
+    for i, da in enumerate(time_series[1:], 1):
+        try:
+            aligned_da = da.rio.reproject_match(reference_da)
+            aligned_series.append(aligned_da)
+        except Exception as e:
+            raise Error
+            continue
+
+    return aligned_series
+
+def load_xarray_v2(metadata: DataRequestMetadata, align=False) -> xarray.Dataset:
     data_vars = {}
 
-    for f in data_request_metadata.files:
+    for f in metadata.files:
         dataset = rioxarray.open_rasterio(f.url, chunks={"x": 2000, "y": 2000})
 
         for b in f.bands:
             band = dataset.sel(band=b.number, drop=True)
 
-            if b['time'] and b['time_pattern']: # datasets with time dimension
+            if b['time'] and b['time_pattern']:
                 time = datetime.strptime(b.time, b.time_pattern)
                 band = band.expand_dims("time")
                 band = band.assign_coords(time=[time])
@@ -29,19 +44,21 @@ def load_xarray_v2(data_request_metadata: DataRequestMetadata) -> xarray.Dataset
             data_vars[b.variable_name].append(band)
 
     for variable_name, time_series in data_vars.items():
-        if 'time' in time_series[0].dims: # concatenate datasets with time dimension
-            data_vars[variable_name] = xarray.concat(time_series, dim="time")
-        else: # if no time dimension, cannot concatenate on dim='time'
+        if 'time' in time_series[0].dims:
+            if align:
+                time_series = align_pixel_grids(time_series)
+            data_vars[variable_name] = xarray.concat(time_series, dim="time", join="exact")
+        else:
             data_vars[variable_name] = time_series[0]
 
     return xarray.Dataset(
         data_vars=data_vars,
         attrs={
-            "dataset_name": data_request_metadata.dataset_name,
-            "dataset_id": data_request_metadata.dataset_id,
-            "aoi_id": data_request_metadata.aoi_id,
-            "data_request_id": data_request_metadata.data_request_id,
-            "crs": data_request_metadata.dataset_crs,
+            "dataset_name": metadata.dataset_name,
+            "dataset_id": metadata.dataset_id,
+            "aoi_id": metadata.aoi_id,
+            "data_request_id": metadata.data_request_id,
+            "crs": metadata.dataset_crs,
         }
     )
 
