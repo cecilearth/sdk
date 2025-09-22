@@ -1,4 +1,5 @@
 import os
+
 import pandas as pd
 import requests
 import snowflake.connector
@@ -7,7 +8,7 @@ import xarray
 from pydantic import BaseModel
 from requests import auth
 from cryptography.hazmat.primitives import serialization
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .errors import (
     Error,
@@ -46,9 +47,12 @@ class Client:
         )
         self._snowflake_user_creds = None
 
-    def create_aoi(self, name: str, geometry: Dict) -> AOI:
+    def create_aoi(self, geometry: Dict, external_ref: Optional[str] = None) -> AOI:
         # TODO: validate geometry
-        res = self._post(url="/v0/aois", model=AOICreate(name=name, geometry=geometry))
+        res = self._post(
+            url="/v0/aois",
+            model=AOICreate(geometry=geometry, external_ref=external_ref),
+        )
         return AOI(**res)
 
     def get_aoi(self, id: str) -> AOI:
@@ -59,10 +63,14 @@ class Client:
         res = self._get(url="/v0/aois")
         return [AOIRecord(**record) for record in res["records"]]
 
-    def create_data_request(self, aoi_id: str, dataset_id: str) -> DataRequest:
+    def create_data_request(
+        self, aoi_id: str, dataset_id: str, external_ref: Optional[str] = None
+    ) -> DataRequest:
         res = self._post(
             url="/v0/data-requests",
-            model=DataRequestCreate(aoi_id=aoi_id, dataset_id=dataset_id),
+            model=DataRequestCreate(
+                aoi_id=aoi_id, dataset_id=dataset_id, external_ref=external_ref
+            ),
         )
         return DataRequest(**res)
 

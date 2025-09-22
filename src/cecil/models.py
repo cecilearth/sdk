@@ -8,7 +8,7 @@ from pydantic.alias_generators import to_camel
 class AOI(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     id: str
-    name: str
+    external_ref: Optional[str]
     geometry: Dict
     hectares: float
     created_at: datetime.datetime
@@ -18,7 +18,7 @@ class AOI(BaseModel):
 class AOIRecord(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     id: str
-    name: str
+    external_ref: Optional[str]
     hectares: float
     created_at: datetime.datetime
     created_by: str
@@ -26,8 +26,8 @@ class AOIRecord(BaseModel):
 
 class AOICreate(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-    name: str
     geometry: Dict
+    external_ref: Optional[str]
 
 
 class DataRequest(BaseModel):
@@ -35,6 +35,7 @@ class DataRequest(BaseModel):
     id: str
     aoi_id: str
     dataset_id: str
+    external_ref: Optional[str]
     created_at: datetime.datetime
     created_by: str
 
@@ -43,6 +44,7 @@ class DataRequestCreate(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     aoi_id: str
     dataset_id: str
+    external_ref: Optional[str]
 
 
 class OrganisationSettings(BaseModel):
