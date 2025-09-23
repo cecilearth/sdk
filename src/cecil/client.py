@@ -84,8 +84,8 @@ class Client:
 
     def load_xarray(self, id: str) -> xarray.Dataset:
         res = self._get(url=f"/v0/data-requests/{id}/metadata")
-        data_request_metadata = DataRequestMetadata(**res)
-        return load_xarray(data_request_metadata)
+        metadata = DataRequestMetadata(**res)
+        return load_xarray(metadata)
 
     def create_transformation(
         self, data_request_id: str, crs: str, spatial_resolution: float
