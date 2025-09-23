@@ -31,7 +31,7 @@ def load_xarray(metadata: DataRequestMetadata) -> xarray.Dataset:
         for b in f.bands:
             band = dataset.sel(band=b.number, drop=True)
 
-            if b['time'] and b['time_pattern']:
+            if b.time and b.time_pattern:
                 time = datetime.strptime(b.time, b.time_pattern)
                 band = band.expand_dims("time")
                 band = band.assign_coords(time=[time])
