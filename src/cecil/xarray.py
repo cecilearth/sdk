@@ -1,3 +1,4 @@
+import os
 import rioxarray
 import xarray
 
@@ -5,6 +6,10 @@ from datetime import datetime
 
 from .errors import Error
 from .models import DataRequestMetadata
+
+os.environ["GDAL_NUM_THREADS"] = "1"
+os.environ["GDAL_DISABLE_READDIR_ON_OPEN"] = "FALSE"
+
 
 def align_pixel_grids(time_series):
     # Use the first timestep as reference
@@ -22,11 +27,15 @@ def align_pixel_grids(time_series):
 
     return aligned_series
 
+
 def load_xarray(metadata: DataRequestMetadata) -> xarray.Dataset:
     data_vars = {}
 
     for f in metadata.files:
-        dataset = rioxarray.open_rasterio(f.url, chunks={"x": 2000, "y": 2000})
+        dataset = rioxarray.open_rasterio(
+            f.url,
+            chunks={"x": 2000, "y": 2000},
+        )
 
         for b in f.bands:
             band = dataset.sel(band=b.number, drop=True)
@@ -44,9 +53,11 @@ def load_xarray(metadata: DataRequestMetadata) -> xarray.Dataset:
             data_vars[b.variable_name].append(band)
 
     for variable_name, time_series in data_vars.items():
-        if 'time' in time_series[0].dims:
-            #time_series = align_pixel_grids(time_series)
-            data_vars[variable_name] = xarray.concat(time_series, dim="time", join="exact")
+        if "time" in time_series[0].dims:
+            # time_series = align_pixel_grids(time_series)
+            data_vars[variable_name] = xarray.concat(
+                time_series, dim="time", join="exact"
+            )
         else:
             data_vars[variable_name] = time_series[0]
 
@@ -59,5 +70,5 @@ def load_xarray(metadata: DataRequestMetadata) -> xarray.Dataset:
             "dataset_crs": metadata.dataset_crs,
             "aoi_id": metadata.aoi_id,
             "data_request_id": metadata.data_request_id,
-        }
+        },
     )
