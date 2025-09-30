@@ -82,8 +82,8 @@ class Client:
         res = self._get(url="/v0/data-requests")
         return [DataRequest(**record) for record in res["records"]]
 
-    def load_xarray(self, id: str) -> xarray.Dataset:
-        res = self._get(url=f"/v0/data-requests/{id}/metadata")
+    def load_xarray(self, data_request_id: str) -> xarray.Dataset:
+        res = self._get(url=f"/v0/data-requests/{data_request_id}/metadata")
         metadata = DataRequestMetadata(**res)
         return load_xarray(metadata)
 
