@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from requests import auth
 from cryptography.hazmat.primitives import serialization
 from typing import Dict, List, Optional
+from warnings import warn
 
 from .errors import (
     Error,
@@ -87,9 +88,31 @@ class Client:
         metadata = DataRequestMetadata(**res)
         return load_xarray(metadata)
 
+    def load_dataframe(self, data_request_id: str) -> pd.DataFrame:
+
+        data_request = self.get_data_request(data_request_id)
+
+        try:
+            secure_view = {
+                "528f54b8-1cb9-412c-a646-30a55ddb7cbd": "data_request_db.ibat.kba",
+                "f30f2125-c472-43c7-85c8-52f0d4b1d160": "data_request_db.ibat.redlist",
+                "c1ee0d62-95ef-49b1-adf1-6a5a933d726d": "data_request_db.ibat.wdpa",
+            }[data_request.dataset_id]
+        except KeyError:
+            raise ValueError("load_dataframe() is not supported for raster datasets.")
+
+        return self._query(
+            f"select * from {secure_view} where data_request_id = '{data_request_id}'"
+        )
+
     def create_transformation(
         self, data_request_id: str, crs: str, spatial_resolution: float
     ) -> Transformation:
+        warn(
+            "create_transformation() is deprecated, refer to https://github.com/cecilearth/examples",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         res = self._post(
             url="/v0/transformations",
             model=TransformationCreate(
@@ -101,14 +124,32 @@ class Client:
         return Transformation(**res)
 
     def get_transformation(self, id: str) -> Transformation:
+        warn(
+            "get_transformation() is deprecated.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         res = self._get(url=f"/v0/transformations/{id}")
         return Transformation(**res)
 
     def list_transformations(self) -> List[Transformation]:
+        warn(
+            "list_transformations() is deprecated.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         res = self._get(url="/v0/transformations")
         return [Transformation(**record) for record in res["records"]]
 
     def query(self, sql: str) -> pd.DataFrame:
+        warn(
+            "query() is deprecated, use load_xarray() or load_dataframe() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._query(sql)
+
+    def _query(self, sql: str) -> pd.DataFrame:
         if self._snowflake_user_creds is None:
             res = self._get(url="/v0/snowflake-user-credentials")
             self._snowflake_user_creds = SnowflakeUserCredentials(**res)
