@@ -36,6 +36,17 @@ def _handle_bad_request(response):
     raise Error("bad request", details)
 
 
+def _handle_method_not_allowed(response):
+    if not _is_json(response.text):
+        raise Error("method not allowed")
+
+    details = {}
+    for key, value in response.json().items():
+        details[_format_json_key(key)] = value
+
+    raise Error("method not allowed", details)
+
+
 def _handle_not_found(response):
     if not _is_json(response.text):
         raise Error("resource not found")

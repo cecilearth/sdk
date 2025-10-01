@@ -14,6 +14,7 @@ from warnings import warn
 from .errors import (
     Error,
     _handle_bad_request,
+    _handle_method_not_allowed,
     _handle_not_found,
     _handle_too_many_requests,
     _handle_unprocessable_entity,
@@ -99,7 +100,10 @@ class Client:
                 "c1ee0d62-95ef-49b1-adf1-6a5a933d726d": "data_request_db.ibat.wdpa",
             }[data_request.dataset_id]
         except KeyError:
-            raise ValueError("load_dataframe() is not supported for raster datasets.")
+            raise Error(
+                "method not allowed",
+                {"message": "load_dataframe() is not supported for raster datasets."},
+            )
 
         return self._query(
             f"select * from {secure_view} where data_request_id = '{data_request_id}'"
@@ -253,6 +257,8 @@ class Client:
                     raise Error("unauthorised")
                 case 404:
                     _handle_not_found(err.response)
+                case 405:
+                    _handle_method_not_allowed(err.response)
                 case 422:
                     _handle_unprocessable_entity(err.response)
                 case 429:
