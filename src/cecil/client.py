@@ -36,6 +36,7 @@ from .models import (
     User,
     UserCreate,
     DataRequestMetadata,
+    DataRequestParquetFiles,
 )
 from .version import __version__
 from .xarray import load_xarray
@@ -90,24 +91,12 @@ class Client:
         return load_xarray(metadata)
 
     def load_dataframe(self, data_request_id: str) -> pd.DataFrame:
-
-        data_request = self.get_data_request(data_request_id)
-
-        try:
-            secure_view = {
-                "528f54b8-1cb9-412c-a646-30a55ddb7cbd": "data_request_db.ibat.kba",
-                "f30f2125-c472-43c7-85c8-52f0d4b1d160": "data_request_db.ibat.redlist",
-                "c1ee0d62-95ef-49b1-adf1-6a5a933d726d": "data_request_db.ibat.wdpa",
-            }[data_request.dataset_id]
-        except KeyError:
-            raise Error(
-                "method not allowed",
-                {"message": "load_dataframe() is not supported for raster datasets."},
-            )
-
-        return self._query(
-            f"select * from {secure_view} where data_request_id = '{data_request_id}'"
-        )
+        res = self._get(url=f"/v0/data-requests/{data_request_id}/parquet-files")
+        metadata = DataRequestParquetFiles(**res)
+        df = pd.concat((pd.read_parquet(f) for f in metadata.files))
+        return df[
+            [col for col in df.columns if col not in ("organisation_id", "created_at")]
+        ]
 
     def create_transformation(
         self, data_request_id: str, crs: str, spatial_resolution: float

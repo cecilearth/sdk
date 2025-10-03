@@ -135,3 +135,8 @@ class DataRequestMetadata(BaseModel):
     aoi_id: str
     data_request_id: str
     files: List[File]
+
+
+class DataRequestParquetFiles(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    files: List[str]
