@@ -91,14 +91,6 @@ class Client:
         return load_xarray(metadata)
 
     def load_dataframe(self, data_request_id: str) -> pd.DataFrame:
-        warn(
-            "load_dataframe() is deprecated, use load_pandas() instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.load_pandas(data_request_id)
-
-    def load_pandas(self, data_request_id: str) -> pd.DataFrame:
         res = self._get(url=f"/v0/data-requests/{data_request_id}/parquet-files")
         metadata = DataRequestParquetFiles(**res)
         df = pd.concat((pd.read_parquet(f) for f in metadata.files))
@@ -144,7 +136,7 @@ class Client:
 
     def query(self, sql: str) -> pd.DataFrame:
         warn(
-            "query() is deprecated, use load_xarray() or load_pandas() instead.",
+            "query() is deprecated, use load_xarray() or load_dataframe() instead.",
             DeprecationWarning,
             stacklevel=2,
         )
