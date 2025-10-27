@@ -137,6 +137,27 @@ class DataRequestMetadata(BaseModel):
     files: List[File]
 
 
+class Bucket(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    name: str
+    prefix: str
+    access_key_id: str
+    secret_access_key: str
+    session_token: str
+    expiration: datetime.datetime
+
+
+class DataRequestLoadXarray(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    provider_name: str
+    dataset_id: str
+    dataset_name: str
+    dataset_crs: str
+    aoi_id: str
+    data_request_id: str
+    bucket: Bucket
+
+
 class DataRequestParquetFiles(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     files: List[str]

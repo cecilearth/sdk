@@ -37,9 +37,11 @@ from .models import (
     UserCreate,
     DataRequestMetadata,
     DataRequestParquetFiles,
+    DataRequestLoadXarray,
 )
 from .version import __version__
 from .xarray import load_xarray
+from .xarray import load_xarray_v2
 
 
 class Client:
@@ -89,6 +91,11 @@ class Client:
         res = self._get(url=f"/v0/data-requests/{data_request_id}/metadata")
         metadata = DataRequestMetadata(**res)
         return load_xarray(metadata)
+
+    def load_xarray_v2(self, data_request_id: str) -> xarray.Dataset:
+        res = self._get(url=f"/v0/data-requests/{data_request_id}/load-xarray")
+        load_xarray_info = DataRequestLoadXarray(**res)
+        return load_xarray_v2(load_xarray_info)
 
     def load_dataframe(self, data_request_id: str) -> pd.DataFrame:
         res = self._get(url=f"/v0/data-requests/{data_request_id}/parquet-files")
