@@ -1,5 +1,6 @@
 import os
 import re
+import time
 
 import boto3
 import rioxarray
@@ -10,8 +11,7 @@ from datetime import datetime
 from .errors import Error
 from .models import DataRequestMetadata, DataRequestLoadXarray, Bucket
 
-os.environ["GDAL_NUM_THREADS"] = "1"
-os.environ["GDAL_DISABLE_READDIR_ON_OPEN"] = "FALSE"
+os.environ["GDAL_DISABLE_READDIR_ON_OPEN"] = "TRUE"
 
 
 def align_pixel_grids(time_series):
@@ -30,22 +30,44 @@ def align_pixel_grids(time_series):
     return aligned_series
 
 
+def retry_with_exponential_backoff(
+    func, retries, start_delay, multiplier, *args, **kwargs
+):
+    delay = start_delay
+    for attempt in range(1, retries + 1):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            if attempt == retries:
+                raise e
+            time.sleep(delay)
+            delay *= multiplier
+    return None
+
+
+def load_file(url: str):
+    return rioxarray.open_rasterio(
+        url,
+        chunks={"x": 2000, "y": 2000},
+    )
+
+
 def load_xarray(metadata: DataRequestMetadata) -> xarray.Dataset:
     data_vars = {}
 
     for f in metadata.files:
-        dataset = rioxarray.open_rasterio(
-            f.url,
-            chunks={"x": 2000, "y": 2000},
-        )
+        try:
+            dataset = retry_with_exponential_backoff(load_file, 5, 1, 2, f.url)
+        except Exception as e:
+            raise ValueError(f"failed to load file: {e}")
 
         for b in f.bands:
             band = dataset.sel(band=b.number, drop=True)
 
             if b.time and b.time_pattern:
-                time = datetime.strptime(b.time, b.time_pattern)
+                t = datetime.strptime(b.time, b.time_pattern)
                 band = band.expand_dims("time")
-                band = band.assign_coords(time=[time])
+                band = band.assign_coords(time=[t])
 
             band.name = b.variable_name
 
