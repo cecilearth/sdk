@@ -1,15 +1,16 @@
 import os
 import re
 import time
+from datetime import datetime
 
 import boto3
+import dask
+import rasterio
 import rioxarray
 import xarray
 
-from datetime import datetime
-
 from .errors import Error
-from .models import DataRequestMetadata, DataRequestLoadXarray, Bucket
+from .models import DataRequestMetadata, DataRequestListTIFF
 
 os.environ["GDAL_DISABLE_READDIR_ON_OPEN"] = "TRUE"
 
@@ -98,30 +99,45 @@ def load_xarray(metadata: DataRequestMetadata) -> xarray.Dataset:
     )
 
 
-def load_xarray_v2(load_xarray_info: DataRequestLoadXarray) -> xarray.Dataset:
-    data_vars = {}
+def load_xarray_v2(api_metadata: DataRequestListTIFF) -> xarray.Dataset:
+    keys = _list_files(api_metadata)
+    raster_metadata = _get_raster_metadata(api_metadata.bucket.name, keys[0])
 
-    keys = _get_xarray_keys(load_xarray_info.bucket)
+    data_vars = {}
     for key in keys:
+        variable_name = key.split("/")[14]
         timestamp_pattern = re.compile(r"\d{4}/\d{2}/\d{2}/\d{2}/\d{2}/\d{2}")
         timestamp_str = timestamp_pattern.search(key).group()
 
-        variable_name = key.split("/")[14]
-        filename = f"s3://{load_xarray_info.bucket.name}/{key}"
-        dataset = rioxarray.open_rasterio(filename, chunks={"x": 2000, "y": 2000})
-        band = dataset.sel(band=1, drop=True)
-        band.name = variable_name
+        file_info = api_metadata.fileBandMapping[variable_name]
+        num_bands = len(file_info.bands.keys())
+
+        array = _create_lazy_dask_array(
+            f"s3://{api_metadata.bucket.name}/{key}",
+            num_bands,
+            raster_metadata["height"],
+            raster_metadata["width"],
+            file_info.dtype,
+        )
+        da = xarray.DataArray(
+            array,
+            dims=("band", "y", "x"),
+        )
+        da.name = variable_name
+
+        if num_bands == 1:
+            da = da.squeeze("band")
 
         # Dataset without time information
         if timestamp_str != "0000/00/00/00/00/00":
             time = datetime.strptime(timestamp_str, "%Y/%m/%d/%H/%M/%S")
-            band = band.expand_dims("time")
-            band = band.assign_coords(time=[time])
+            da = da.expand_dims("time")
+            da = da.assign_coords(time=[time])
 
         if variable_name not in data_vars:
             data_vars[variable_name] = []
 
-        data_vars[variable_name].append(band)
+        data_vars[variable_name].append(da)
 
     for variable_name, time_series in data_vars.items():
         if "time" in time_series[0].dims:
@@ -131,30 +147,36 @@ def load_xarray_v2(load_xarray_info: DataRequestLoadXarray) -> xarray.Dataset:
         else:
             data_vars[variable_name] = time_series[0]
 
-    return xarray.Dataset(
+    ds = xarray.Dataset(
         data_vars=data_vars,
+        coords={
+            "y": raster_metadata["y"],
+            "x": raster_metadata["x"],
+        },
         attrs={
-            "provider_name": load_xarray_info.provider_name,
-            "dataset_id": load_xarray_info.dataset_id,
-            "dataset_name": load_xarray_info.dataset_name,
-            "dataset_crs": load_xarray_info.dataset_crs,
-            "aoi_id": load_xarray_info.aoi_id,
-            "data_request_id": load_xarray_info.data_request_id,
+            "provider_name": api_metadata.provider_name,
+            "dataset_id": api_metadata.dataset_id,
+            "dataset_name": api_metadata.dataset_name,
+            "dataset_crs": api_metadata.dataset_crs,
+            "aoi_id": api_metadata.aoi_id,
+            "data_request_id": api_metadata.data_request_id,
         },
     )
+    ds = ds.rio.write_crs(api_metadata.dataset_crs)
+
+    return ds
 
 
-def _get_xarray_keys(bucket: Bucket) -> list[str]:
-    os.environ["AWS_ACCESS_KEY_ID"] = bucket.access_key_id
-    os.environ["AWS_SECRET_ACCESS_KEY"] = bucket.secret_access_key
-    os.environ["AWS_SESSION_TOKEN"] = bucket.session_token
+def _list_files(api_metadata: DataRequestListTIFF) -> list[str]:
+    os.environ["AWS_ACCESS_KEY_ID"] = api_metadata.credentials.access_key_id
+    os.environ["AWS_SECRET_ACCESS_KEY"] = api_metadata.credentials.secret_access_key
+    os.environ["AWS_SESSION_TOKEN"] = api_metadata.credentials.session_token
 
     s3_client = boto3.client("s3")
-
     paginator = s3_client.get_paginator("list_objects_v2")
     page_iterator = paginator.paginate(
-        Bucket=bucket.name,
-        Prefix=bucket.prefix,
+        Bucket=api_metadata.bucket.name,
+        Prefix=api_metadata.bucket.prefix,
     )
 
     keys = []
@@ -163,3 +185,25 @@ def _get_xarray_keys(bucket: Bucket) -> list[str]:
             keys.append(obj["Key"])
 
     return keys
+
+
+def _get_raster_metadata(bucket: str, path: str):
+    da = xarray.open_dataarray(f"s3://{bucket}/{path}", engine="rasterio")
+    return {
+        "height": da.rio.height,
+        "width": da.rio.width,
+        "x": da.x.values,
+        "y": da.y.values,
+    }
+
+
+def _create_lazy_dask_array(
+    file_path: str, num_bands: int, height: int, width: int, dtype: str
+):
+    def read_chunk():
+        with rasterio.open(file_path) as src:
+            return src.read()
+
+    return dask.array.from_delayed(
+        dask.delayed(read_chunk)(), shape=(num_bands, height, width), dtype=dtype
+    )
