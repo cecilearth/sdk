@@ -161,7 +161,6 @@ class DataRequestListFiles(BaseModel):
     provider_name: str
     dataset_id: str
     dataset_name: str
-    dataset_crs: str
     aoi_id: str
     data_request_id: str
     bucket: Bucket

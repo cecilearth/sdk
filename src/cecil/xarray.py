@@ -153,7 +153,10 @@ def load_xarray_v2(api_metadata: DataRequestListFiles) -> xarray.Dataset:
         timestamp_pattern = re.compile(r"\d{4}/\d{2}/\d{2}/\d{2}/\d{2}/\d{2}")
         timestamp_str = timestamp_pattern.search(key).group()
 
-        file = api_metadata.file_mapping[filename]
+        file = api_metadata.file_mapping.get(filename)
+        if not file:
+            continue
+
         for band_num, band_name in enumerate(file.bands, start=1):
             array = _create_lazy_dask_array(
                 f"s3://{api_metadata.bucket.name}/{key}",
