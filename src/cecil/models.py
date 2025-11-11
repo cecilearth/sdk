@@ -137,13 +137,13 @@ class DataRequestMetadata(BaseModel):
     files: List[File]
 
 
-class DataRequestTIFFBucket(BaseModel):
+class Bucket(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     name: str
     prefix: str
 
 
-class DataRequestTIFFBucketCredentials(BaseModel):
+class BucketCredentials(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     access_key_id: str
     secret_access_key: str
@@ -151,12 +151,12 @@ class DataRequestTIFFBucketCredentials(BaseModel):
     expiration: datetime.datetime
 
 
-class TIFFInfo(BaseModel):
-    dtype: str
-    bands: Dict[int, str]
+class FileMapping(BaseModel):
+    type: str
+    bands: List
 
 
-class DataRequestListTIFF(BaseModel):
+class DataRequestListFiles(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     provider_name: str
     dataset_id: str
@@ -164,10 +164,10 @@ class DataRequestListTIFF(BaseModel):
     dataset_crs: str
     aoi_id: str
     data_request_id: str
-    bucket: DataRequestTIFFBucket
-    credentials: DataRequestTIFFBucketCredentials
-    allowedActions: List
-    fileBandMapping: Dict[str, TIFFInfo]
+    bucket: Bucket
+    credentials: BucketCredentials
+    allowed_actions: List
+    file_mapping: Dict[str, FileMapping]
 
 
 class DataRequestParquetFiles(BaseModel):

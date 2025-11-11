@@ -10,7 +10,7 @@ import rioxarray
 import xarray
 
 from .errors import Error
-from .models import DataRequestMetadata, DataRequestListTIFF
+from .models import DataRequestMetadata, DataRequestListFiles
 
 os.environ["GDAL_DISABLE_READDIR_ON_OPEN"] = "TRUE"
 
@@ -99,75 +99,7 @@ def load_xarray(metadata: DataRequestMetadata) -> xarray.Dataset:
     )
 
 
-def load_xarray_v2(api_metadata: DataRequestListTIFF) -> xarray.Dataset:
-    keys = _list_files(api_metadata)
-    raster_metadata = _get_raster_metadata(api_metadata.bucket.name, keys[0])
-
-    data_vars = {}
-    for key in keys:
-        variable_name = key.split("/")[14]
-        timestamp_pattern = re.compile(r"\d{4}/\d{2}/\d{2}/\d{2}/\d{2}/\d{2}")
-        timestamp_str = timestamp_pattern.search(key).group()
-
-        file_info = api_metadata.fileBandMapping[variable_name]
-        num_bands = len(file_info.bands.keys())
-
-        array = _create_lazy_dask_array(
-            f"s3://{api_metadata.bucket.name}/{key}",
-            num_bands,
-            raster_metadata["height"],
-            raster_metadata["width"],
-            file_info.dtype,
-        )
-        da = xarray.DataArray(
-            array,
-            dims=("band", "y", "x"),
-        )
-        da.name = variable_name
-
-        if num_bands == 1:
-            da = da.squeeze("band")
-
-        # Dataset without time information
-        if timestamp_str != "0000/00/00/00/00/00":
-            time = datetime.strptime(timestamp_str, "%Y/%m/%d/%H/%M/%S")
-            da = da.expand_dims("time")
-            da = da.assign_coords(time=[time])
-
-        if variable_name not in data_vars:
-            data_vars[variable_name] = []
-
-        data_vars[variable_name].append(da)
-
-    for variable_name, time_series in data_vars.items():
-        if "time" in time_series[0].dims:
-            data_vars[variable_name] = xarray.concat(
-                time_series, dim="time", join="exact"
-            )
-        else:
-            data_vars[variable_name] = time_series[0]
-
-    ds = xarray.Dataset(
-        data_vars=data_vars,
-        coords={
-            "y": raster_metadata["y"],
-            "x": raster_metadata["x"],
-        },
-        attrs={
-            "provider_name": api_metadata.provider_name,
-            "dataset_id": api_metadata.dataset_id,
-            "dataset_name": api_metadata.dataset_name,
-            "dataset_crs": api_metadata.dataset_crs,
-            "aoi_id": api_metadata.aoi_id,
-            "data_request_id": api_metadata.data_request_id,
-        },
-    )
-    ds = ds.rio.write_crs(api_metadata.dataset_crs)
-
-    return ds
-
-
-def _list_files(api_metadata: DataRequestListTIFF) -> list[str]:
+def _list_s3_keys(api_metadata: DataRequestListFiles) -> list[str]:
     os.environ["AWS_ACCESS_KEY_ID"] = api_metadata.credentials.access_key_id
     os.environ["AWS_SECRET_ACCESS_KEY"] = api_metadata.credentials.secret_access_key
     os.environ["AWS_SESSION_TOKEN"] = api_metadata.credentials.session_token
@@ -187,9 +119,10 @@ def _list_files(api_metadata: DataRequestListTIFF) -> list[str]:
     return keys
 
 
-def _get_raster_metadata(bucket: str, path: str):
+def _get_file_metadata(bucket: str, path: str):
     da = xarray.open_dataarray(f"s3://{bucket}/{path}", engine="rasterio")
     return {
+        "crs": da.rio.crs,
         "height": da.rio.height,
         "width": da.rio.width,
         "x": da.x.values,
@@ -198,12 +131,79 @@ def _get_raster_metadata(bucket: str, path: str):
 
 
 def _create_lazy_dask_array(
-    file_path: str, num_bands: int, height: int, width: int, dtype: str
+    file_path: str, band_num: int, height: int, width: int, dtype: str
 ):
     def read_chunk():
         with rasterio.open(file_path) as src:
-            return src.read()
+            return src.read(band_num)
 
     return dask.array.from_delayed(
-        dask.delayed(read_chunk)(), shape=(num_bands, height, width), dtype=dtype
+        dask.delayed(read_chunk)(), shape=(height, width), dtype=dtype
     )
+
+
+def load_xarray_v2(api_metadata: DataRequestListFiles) -> xarray.Dataset:
+    keys = _list_s3_keys(api_metadata)
+    file_metadata = _get_file_metadata(api_metadata.bucket.name, keys[0])
+
+    data_vars = {}
+    for key in keys:
+        filename = key.split("/")[-1].rsplit(".", 1)[0]
+
+        timestamp_pattern = re.compile(r"\d{4}/\d{2}/\d{2}/\d{2}/\d{2}/\d{2}")
+        timestamp_str = timestamp_pattern.search(key).group()
+
+        file = api_metadata.file_mapping[filename]
+        for band_num, band_name in enumerate(file.bands, start=1):
+            array = _create_lazy_dask_array(
+                f"s3://{api_metadata.bucket.name}/{key}",
+                band_num,
+                file_metadata["height"],
+                file_metadata["width"],
+                file.type,
+            )
+            da = xarray.DataArray(
+                array,
+                dims=("y", "x"),
+            )
+            da.name = band_name
+
+            # Dataset with time dimension
+            if timestamp_str != "0000/00/00/00/00/00":
+                time = datetime.strptime(timestamp_str, "%Y/%m/%d/%H/%M/%S")
+                da = da.expand_dims("time")
+                da = da.assign_coords(time=[time])
+
+            if band_name not in data_vars:
+                data_vars[band_name] = []
+
+            data_vars[band_name].append(da)
+
+    for variable_name, time_series in data_vars.items():
+        if "time" in time_series[0].dims:
+            data_vars[variable_name] = xarray.concat(
+                time_series,
+                dim="time",
+                join="exact",
+            )
+        else:
+            data_vars[variable_name] = time_series[0]
+
+    ds = xarray.Dataset(
+        data_vars=data_vars,
+        coords={
+            "y": file_metadata["y"],
+            "x": file_metadata["x"],
+        },
+        attrs={
+            "aoi_id": api_metadata.aoi_id,
+            "data_request_id": api_metadata.data_request_id,
+            "provider_name": api_metadata.provider_name,
+            "dataset_id": api_metadata.dataset_id,
+            "dataset_name": api_metadata.dataset_name,
+            "dataset_crs": file_metadata["crs"],
+        },
+    )
+    ds = ds.rio.write_crs(file_metadata["crs"])
+
+    return ds

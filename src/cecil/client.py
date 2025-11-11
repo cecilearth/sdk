@@ -37,7 +37,7 @@ from .models import (
     UserCreate,
     DataRequestMetadata,
     DataRequestParquetFiles,
-    DataRequestListTIFF,
+    DataRequestListFiles,
 )
 from .version import __version__
 from .xarray import load_xarray
@@ -94,7 +94,7 @@ class Client:
 
     def load_xarray_v2(self, data_request_id: str) -> xarray.Dataset:
         res = self._get(url=f"/v0/data-requests/{data_request_id}/files/tiff")
-        metadata = DataRequestListTIFF(**res)
+        metadata = DataRequestListFiles(**res)
         return load_xarray_v2(metadata)
 
     def load_dataframe(self, data_request_id: str) -> pd.DataFrame:
