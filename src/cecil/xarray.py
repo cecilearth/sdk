@@ -99,16 +99,16 @@ def load_xarray(metadata: DataRequestMetadata) -> xarray.Dataset:
     )
 
 
-def _list_s3_keys(api_metadata: DataRequestListFiles) -> list[str]:
-    os.environ["AWS_ACCESS_KEY_ID"] = api_metadata.credentials.access_key_id
-    os.environ["AWS_SECRET_ACCESS_KEY"] = api_metadata.credentials.secret_access_key
-    os.environ["AWS_SESSION_TOKEN"] = api_metadata.credentials.session_token
+def _list_s3_keys(res: DataRequestListFiles) -> list[str]:
+    os.environ["AWS_ACCESS_KEY_ID"] = res.credentials.access_key_id
+    os.environ["AWS_SECRET_ACCESS_KEY"] = res.credentials.secret_access_key
+    os.environ["AWS_SESSION_TOKEN"] = res.credentials.session_token
 
     s3_client = boto3.client("s3")
     paginator = s3_client.get_paginator("list_objects_v2")
     page_iterator = paginator.paginate(
-        Bucket=api_metadata.bucket.name,
-        Prefix=api_metadata.bucket.prefix,
+        Bucket=res.bucket.name,
+        Prefix=res.bucket.prefix,
     )
 
     keys = []
@@ -142,28 +142,31 @@ def _create_lazy_dask_array(
     )
 
 
-def load_xarray_v2(api_metadata: DataRequestListFiles) -> xarray.Dataset:
-    keys = _list_s3_keys(api_metadata)
-    file_metadata = _get_file_metadata(api_metadata.bucket.name, keys[0])
+def load_xarray_v2(res: DataRequestListFiles) -> xarray.Dataset:
+    keys = _list_s3_keys(res)
+    if not keys:
+        return xarray.Dataset()
+
+    first_file_metadata = _get_file_metadata(res.bucket.name, keys[0])
+    timestamp_pattern = re.compile(r"\d{4}/\d{2}/\d{2}/\d{2}/\d{2}/\d{2}")
 
     data_vars = {}
     for key in keys:
         filename = key.split("/")[-1].rsplit(".", 1)[0]
 
-        timestamp_pattern = re.compile(r"\d{4}/\d{2}/\d{2}/\d{2}/\d{2}/\d{2}")
-        timestamp_str = timestamp_pattern.search(key).group()
-
-        file = api_metadata.file_mapping.get(filename)
-        if not file:
+        file_info = res.file_mapping.get(filename)
+        if not file_info:
             continue
 
-        for band_num, band_name in enumerate(file.bands, start=1):
+        timestamp_str = timestamp_pattern.search(key).group()
+
+        for band_num, band_name in enumerate(file_info.bands, start=1):
             array = _create_lazy_dask_array(
-                f"s3://{api_metadata.bucket.name}/{key}",
+                f"s3://{res.bucket.name}/{key}",
                 band_num,
-                file_metadata["height"],
-                file_metadata["width"],
-                file.type,
+                first_file_metadata["height"],
+                first_file_metadata["width"],
+                file_info.type,
             )
             da = xarray.DataArray(
                 array,
@@ -195,18 +198,20 @@ def load_xarray_v2(api_metadata: DataRequestListFiles) -> xarray.Dataset:
     ds = xarray.Dataset(
         data_vars=data_vars,
         coords={
-            "y": file_metadata["y"],
-            "x": file_metadata["x"],
+            "y": first_file_metadata["y"],
+            "x": first_file_metadata["x"],
         },
         attrs={
-            "aoi_id": api_metadata.aoi_id,
-            "data_request_id": api_metadata.data_request_id,
-            "provider_name": api_metadata.provider_name,
-            "dataset_id": api_metadata.dataset_id,
-            "dataset_name": api_metadata.dataset_name,
-            "dataset_crs": file_metadata["crs"],
+            "provider_name": res.provider_name,
+            "id": res.dataset_id,
+            "name": res.dataset_name,
+            # TODO: confirm if we need: res, is_tiled, blockxsize, transform, bands
+            "aoi_id": res.aoi_id,
+            # TODO: add aoi_external_ref
+            "data_request_id": res.data_request_id,
+            # TODO: add data_request_external_ref
         },
     )
-    ds = ds.rio.write_crs(file_metadata["crs"])
+    ds = ds.rio.write_crs(first_file_metadata["crs"])
 
     return ds
