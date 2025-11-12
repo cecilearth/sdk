@@ -1,4 +1,3 @@
-import os
 import re
 import time
 from datetime import datetime
@@ -6,13 +5,12 @@ from datetime import datetime
 import boto3
 import dask
 import rasterio
+import rasterio.session
 import rioxarray
 import xarray
 
 from .errors import Error
 from .models import DataRequestMetadata, DataRequestListFiles
-
-os.environ["GDAL_DISABLE_READDIR_ON_OPEN"] = "TRUE"
 
 
 def align_pixel_grids(time_series):
@@ -99,16 +97,12 @@ def load_xarray(metadata: DataRequestMetadata) -> xarray.Dataset:
     )
 
 
-def _list_s3_keys(res: DataRequestListFiles) -> list[str]:
-    os.environ["AWS_ACCESS_KEY_ID"] = res.credentials.access_key_id
-    os.environ["AWS_SECRET_ACCESS_KEY"] = res.credentials.secret_access_key
-    os.environ["AWS_SESSION_TOKEN"] = res.credentials.session_token
-
-    s3_client = boto3.client("s3")
+def _list_s3_keys(session: boto3.session.Session, bucket_name, prefix) -> list[str]:
+    s3_client = session.client("s3")
     paginator = s3_client.get_paginator("list_objects_v2")
     page_iterator = paginator.paginate(
-        Bucket=res.bucket.name,
-        Prefix=res.bucket.prefix,
+        Bucket=bucket_name,
+        Prefix=prefix,
     )
 
     keys = []
@@ -119,8 +113,12 @@ def _list_s3_keys(res: DataRequestListFiles) -> list[str]:
     return keys
 
 
-def _get_file_metadata(bucket: str, path: str):
-    da = xarray.open_dataarray(f"s3://{bucket}/{path}", engine="rasterio")
+def _get_file_metadata(session, bucket: str, path: str):
+    with rasterio.env.Env(
+        rasterio.session.AWSSession(session), GDAL_DISABLE_READDIR_ON_OPEN=True
+    ):
+        da = xarray.open_dataarray(f"s3://{bucket}/{path}", engine="rasterio")
+
     return {
         "crs": da.rio.crs,
         "height": da.rio.height,
@@ -131,11 +129,21 @@ def _get_file_metadata(bucket: str, path: str):
 
 
 def _create_lazy_dask_array(
-    file_path: str, band_num: int, height: int, width: int, dtype: str
+    session: boto3.session.Session,
+    file_path: str,
+    band_num: int,
+    height: int,
+    width: int,
+    dtype: str,
 ):
+    rasterio_session = rasterio.session.AWSSession(session)
+
     def read_chunk():
-        with rasterio.open(file_path) as src:
-            return src.read(band_num)
+        with rasterio.env.Env(
+            session=rasterio_session, GDAL_DISABLE_READDIR_ON_OPEN=True
+        ):
+            with rasterio.open(file_path) as src:
+                return src.read(band_num)
 
     return dask.array.from_delayed(
         dask.delayed(read_chunk)(), shape=(height, width), dtype=dtype
@@ -143,11 +151,20 @@ def _create_lazy_dask_array(
 
 
 def load_xarray_v2(res: DataRequestListFiles) -> xarray.Dataset:
-    keys = _list_s3_keys(res)
+
+    session = boto3.session.Session(
+        aws_access_key_id=res.credentials.access_key_id,
+        aws_secret_access_key=res.credentials.secret_access_key,
+        aws_session_token=res.credentials.session_token,
+    )
+
+    keys = _list_s3_keys(session, res.bucket.name, res.bucket.prefix)
+
     if not keys:
         return xarray.Dataset()
 
-    first_file_metadata = _get_file_metadata(res.bucket.name, keys[0])
+    first_file_metadata = _get_file_metadata(session, res.bucket.name, keys[0])
+
     timestamp_pattern = re.compile(r"\d{4}/\d{2}/\d{2}/\d{2}/\d{2}/\d{2}")
 
     data_vars = {}
@@ -162,6 +179,7 @@ def load_xarray_v2(res: DataRequestListFiles) -> xarray.Dataset:
 
         for band_num, band_name in enumerate(file_info.bands, start=1):
             array = _create_lazy_dask_array(
+                session,
                 f"s3://{res.bucket.name}/{key}",
                 band_num,
                 first_file_metadata["height"],
