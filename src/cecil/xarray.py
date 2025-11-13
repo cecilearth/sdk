@@ -13,7 +13,7 @@ from .errors import Error
 from .models import DataRequestMetadata, DataRequestListFiles
 
 
-def align_pixel_grids(time_series):
+def _align_pixel_grids(time_series):
     # Use the first timestep as reference
     reference_da = time_series[0]
     aligned_series = [reference_da]
@@ -29,7 +29,7 @@ def align_pixel_grids(time_series):
     return aligned_series
 
 
-def retry_with_exponential_backoff(
+def _retry_with_exponential_backoff(
     func, retries, start_delay, multiplier, *args, **kwargs
 ):
     delay = start_delay
@@ -44,11 +44,22 @@ def retry_with_exponential_backoff(
     return None
 
 
-def load_file(url: str):
+def _load_file(url: str):
     return rioxarray.open_rasterio(
         url,
         chunks={"x": 2000, "y": 2000},
     )
+
+
+def _load_file_v2(aws_session: boto3.session.Session, url: str):
+    with rasterio.env.Env(
+        session=rasterio.session.AWSSession(aws_session),
+        GDAL_DISABLE_READDIR_ON_OPEN=True,
+    ):
+        return rioxarray.open_rasterio(
+            url,
+            chunks={"x": 2000, "y": 2000},
+        )
 
 
 def load_xarray(metadata: DataRequestMetadata) -> xarray.Dataset:
@@ -56,7 +67,7 @@ def load_xarray(metadata: DataRequestMetadata) -> xarray.Dataset:
 
     for f in metadata.files:
         try:
-            dataset = retry_with_exponential_backoff(load_file, 5, 1, 2, f.url)
+            dataset = _retry_with_exponential_backoff(_load_file, 5, 1, 2, f.url)
         except Exception as e:
             raise ValueError(f"failed to load file: {e}")
 
@@ -151,6 +162,75 @@ def _create_lazy_dask_array(
 
 
 def load_xarray_v2(res: DataRequestListFiles) -> xarray.Dataset:
+    session = boto3.session.Session(
+        aws_access_key_id=res.credentials.access_key_id,
+        aws_secret_access_key=res.credentials.secret_access_key,
+        aws_session_token=res.credentials.session_token,
+    )
+
+    keys = _list_s3_keys(session, res.bucket.name, res.bucket.prefix)
+
+    if not keys:
+        return xarray.Dataset()
+
+    timestamp_pattern = re.compile(r"\d{4}/\d{2}/\d{2}/\d{2}/\d{2}/\d{2}")
+    data_vars = {}
+
+    for key in keys:
+        try:
+            file_da = _retry_with_exponential_backoff(
+                _load_file_v2,
+                5,
+                1,
+                2,
+                session,
+                f"s3://{res.bucket.name}/{key}",
+            )
+        except Exception as e:
+            raise ValueError(f"failed to load file: {e}")
+
+        filename = key.split("/")[-1]
+
+        file_info = res.file_mapping.get(filename)
+        if not file_info:
+            continue
+
+        timestamp_str = timestamp_pattern.search(key).group()
+
+        for band_num, var_name in enumerate(file_info.bands, start=1):
+            band_da = file_da.sel(band=band_num, drop=True)
+            band_da.name = var_name
+
+            # Dataset with time dimension
+            if timestamp_str != "0000/00/00/00/00/00":
+                t = datetime.strptime(timestamp_str, "%Y/%m/%d/%H/%M/%S")
+                band_da = band_da.expand_dims("time")
+                band_da = band_da.assign_coords(time=[t])
+
+            if var_name not in data_vars:
+                data_vars[var_name] = []
+
+            data_vars[var_name].append(band_da)
+
+    for var_name, time_series in data_vars.items():
+        if "time" in time_series[0].dims:
+            data_vars[var_name] = xarray.concat(time_series, dim="time", join="exact")
+        else:
+            data_vars[var_name] = time_series[0]
+
+    return xarray.Dataset(
+        data_vars=data_vars,
+        attrs={
+            "provider_name": res.provider_name,
+            "id": res.dataset_id,
+            "name": res.dataset_name,
+            "aoi_id": res.aoi_id,
+            "data_request_id": res.data_request_id,
+        },
+    )
+
+
+def _dask_example(res: DataRequestListFiles) -> xarray.Dataset:
 
     session = boto3.session.Session(
         aws_access_key_id=res.credentials.access_key_id,
