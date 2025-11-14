@@ -1,16 +1,15 @@
 import os
+from typing import Dict, List, Optional
+from warnings import warn
 
 import pandas as pd
 import requests
 import snowflake.connector
-import xarray
-
+from cryptography.hazmat.primitives import serialization
 from pydantic import BaseModel
 from requests import auth
-from cryptography.hazmat.primitives import serialization
-from typing import Dict, List, Optional
-from warnings import warn
 
+import xarray
 from .errors import (
     Error,
     _handle_bad_request,
@@ -176,7 +175,27 @@ class Client:
         )
         return load_xarray_v2(res)
 
-    def load_dataframe(self, subscription_id: str) -> pd.DataFrame:
+    def load_dataframe(
+        self,
+        subscription_id: Optional[str] = None,
+        data_request_id: Optional[str] = None,
+    ) -> pd.DataFrame:
+        if subscription_id is None and data_request_id is None:
+            raise TypeError("load_dataframe missing argument: 'subscription_id'")
+
+        if subscription_id is not None and data_request_id is not None:
+            raise ValueError(
+                "load_dataframe only accepts one argument but two were provided"
+            )
+
+        if data_request_id:
+            warn(
+                "data_request_id is deprecated, use subscription_id instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            subscription_id = data_request_id
+
         res = SubscriptionParquetFiles(
             **self._get(url=f"/v0/data-requests/{subscription_id}/parquet-files")
         )
