@@ -149,7 +149,7 @@ class Client:
         )
         return load_xarray(res)
 
-    def load_xarray_v2(
+    def _load_xarray_v2(
         self,
         subscription_id: Optional[str] = None,
         data_request_id: Optional[str] = None,
