@@ -10,7 +10,7 @@ import rioxarray
 import xarray
 
 from .errors import Error
-from .models import DataRequestMetadata, DataRequestListFiles
+from .models import SubscriptionMetadata, SubscriptionListFiles
 
 
 def _align_pixel_grids(time_series):
@@ -62,7 +62,7 @@ def _load_file_v2(aws_session: boto3.session.Session, url: str):
         )
 
 
-def load_xarray(metadata: DataRequestMetadata) -> xarray.Dataset:
+def load_xarray(metadata: SubscriptionMetadata) -> xarray.Dataset:
     data_vars = {}
 
     for f in metadata.files:
@@ -161,7 +161,7 @@ def _create_lazy_dask_array(
     )
 
 
-def load_xarray_v2(res: DataRequestListFiles) -> xarray.Dataset:
+def load_xarray_v2(res: SubscriptionListFiles) -> xarray.Dataset:
     session = boto3.session.Session(
         aws_access_key_id=res.credentials.access_key_id,
         aws_secret_access_key=res.credentials.secret_access_key,
@@ -230,7 +230,7 @@ def load_xarray_v2(res: DataRequestListFiles) -> xarray.Dataset:
     )
 
 
-def _dask_example(res: DataRequestListFiles) -> xarray.Dataset:
+def _dask_example(res: SubscriptionListFiles) -> xarray.Dataset:
 
     session = boto3.session.Session(
         aws_access_key_id=res.credentials.access_key_id,

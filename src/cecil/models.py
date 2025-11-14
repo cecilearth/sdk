@@ -126,7 +126,7 @@ class File(BaseModel):
     bands: List[Band]
 
 
-class DataRequestMetadata(BaseModel):
+class SubscriptionMetadata(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     provider_name: str
     dataset_id: str
@@ -156,7 +156,7 @@ class FileMapping(BaseModel):
     bands: List
 
 
-class DataRequestListFiles(BaseModel):
+class SubscriptionListFiles(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     provider_name: str
     dataset_id: str
@@ -169,6 +169,23 @@ class DataRequestListFiles(BaseModel):
     file_mapping: Dict[str, FileMapping]
 
 
-class DataRequestParquetFiles(BaseModel):
+class SubscriptionParquetFiles(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     files: List[str]
+
+
+class Subscription(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    id: str
+    aoi_id: str
+    dataset_id: str
+    external_ref: Optional[str]
+    created_at: datetime.datetime
+    created_by: str
+
+
+class SubscriptionCreate(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    aoi_id: str
+    dataset_id: str
+    external_ref: Optional[str]

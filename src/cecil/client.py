@@ -35,9 +35,11 @@ from .models import (
     TransformationCreate,
     User,
     UserCreate,
-    DataRequestMetadata,
-    DataRequestParquetFiles,
-    DataRequestListFiles,
+    SubscriptionMetadata,
+    SubscriptionParquetFiles,
+    SubscriptionListFiles,
+    Subscription,
+    SubscriptionCreate,
 )
 from .version import __version__
 from .xarray import load_xarray
@@ -71,6 +73,11 @@ class Client:
     def create_data_request(
         self, aoi_id: str, dataset_id: str, external_ref: Optional[str] = None
     ) -> DataRequest:
+        warn(
+            "create_data_request() is deprecated, use create_subscription() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         res = self._post(
             url="/v0/data-requests",
             model=DataRequestCreate(
@@ -80,27 +87,100 @@ class Client:
         return DataRequest(**res)
 
     def get_data_request(self, id: str) -> DataRequest:
+        warn(
+            "get_data_request() is deprecated, use get_subscription() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         res = self._get(url=f"/v0/data-requests/{id}")
         return DataRequest(**res)
 
     def list_data_requests(self) -> List[DataRequest]:
+        warn(
+            "list_data_requests() is deprecated, use list_subscriptions() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         res = self._get(url="/v0/data-requests")
         return [DataRequest(**record) for record in res["records"]]
 
-    def load_xarray(self, data_request_id: str) -> xarray.Dataset:
-        res = self._get(url=f"/v0/data-requests/{data_request_id}/metadata")
-        metadata = DataRequestMetadata(**res)
-        return load_xarray(metadata)
+    def list_subscriptions(self) -> List[Subscription]:
+        res = self._get(url="/v0/data-requests")
+        return [Subscription(**record) for record in res["records"]]
 
-    def load_xarray_v2(self, data_request_id: str) -> xarray.Dataset:
-        res = self._get(url=f"/v0/data-requests/{data_request_id}/files/tiff")
-        metadata = DataRequestListFiles(**res)
-        return load_xarray_v2(metadata)
+    def create_subscription(
+        self, aoi_id: str, dataset_id: str, external_ref: Optional[str] = None
+    ) -> Subscription:
+        res = self._post(
+            url="/v0/data-requests",
+            model=SubscriptionCreate(
+                aoi_id=aoi_id, dataset_id=dataset_id, external_ref=external_ref
+            ),
+        )
 
-    def load_dataframe(self, data_request_id: str) -> pd.DataFrame:
-        res = self._get(url=f"/v0/data-requests/{data_request_id}/parquet-files")
-        metadata = DataRequestParquetFiles(**res)
-        df = pd.concat((pd.read_parquet(f) for f in metadata.files))
+        return Subscription(**res)
+
+    def get_subscription(self, id: str) -> Subscription:
+        res = self._get(url=f"/v0/data-requests/{id}")
+        return Subscription(**res)
+
+    def load_xarray(
+        self,
+        subscription_id: Optional[str] = None,
+        data_request_id: Optional[str] = None,
+    ) -> xarray.Dataset:
+        if subscription_id is None and data_request_id is None:
+            raise TypeError("load_xarray() missing argument: 'subscription_id'")
+
+        if subscription_id is not None and data_request_id is not None:
+            raise ValueError(
+                "load_xarray() only accepts one argument but two were provided"
+            )
+
+        if data_request_id:
+            warn(
+                "data_request_id is deprecated, use subscription_id instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            subscription_id = data_request_id
+
+        res = SubscriptionMetadata(
+            **self._get(url=f"/v0/data-requests/{subscription_id}/metadata")
+        )
+        return load_xarray(res)
+
+    def load_xarray_v2(
+        self,
+        subscription_id: Optional[str] = None,
+        data_request_id: Optional[str] = None,
+    ) -> xarray.Dataset:
+        if subscription_id is None and data_request_id is None:
+            raise TypeError("load_xarray_v2() missing argument: 'subscription_id'")
+
+        if subscription_id is not None and data_request_id is not None:
+            raise ValueError(
+                "load_xarray_v2() only accepts one argument but two were provided"
+            )
+
+        if data_request_id:
+            warn(
+                "data_request_id is deprecated, use subscription_id instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            subscription_id = data_request_id
+
+        res = SubscriptionListFiles(
+            **self._get(url=f"/v0/data-requests/{subscription_id}/files/tiff")
+        )
+        return load_xarray_v2(res)
+
+    def load_dataframe(self, subscription_id: str) -> pd.DataFrame:
+        res = SubscriptionParquetFiles(
+            **self._get(url=f"/v0/data-requests/{subscription_id}/parquet-files")
+        )
+        df = pd.concat((pd.read_parquet(f) for f in res.files))
         return df[
             [col for col in df.columns if col not in ("organisation_id", "created_at")]
         ]
