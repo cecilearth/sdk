@@ -9,7 +9,6 @@ import rasterio.session
 import rioxarray
 import xarray
 
-from .errors import Error
 from .models import SubscriptionMetadata, SubscriptionListFiles
 
 # v1
@@ -99,108 +98,8 @@ def load_xarray_v2(res: SubscriptionListFiles) -> xarray.Dataset:
     timestamp_pattern = re.compile(r"\d{4}/\d{2}/\d{2}/\d{2}/\d{2}/\d{2}")
     data_vars = {}
 
-    for key in keys:
-        try:
-            file_da = _retry_with_exponential_backoff(
-                _load_file_v2,
-                5,
-                1,
-                2,
-                session,
-                f"s3://{res.bucket.name}/{key}",
-            )
-        except Exception as e:
-            raise ValueError(f"failed to load file: {e}")
-
-        filename = key.split("/")[-1]
-
-        file_info = res.file_mapping.get(filename)
-        if not file_info:
-            continue
-
-        timestamp_str = timestamp_pattern.search(key).group()
-
-        for band_num, var_name in enumerate(file_info.bands, start=1):
-            band_da = file_da.sel(band=band_num, drop=True)
-            band_da.name = var_name
-
-            # Dataset with time dimension
-            if timestamp_str != "0000/00/00/00/00/00":
-                t = datetime.strptime(timestamp_str, "%Y/%m/%d/%H/%M/%S")
-                band_da = band_da.expand_dims("time")
-                band_da = band_da.assign_coords(time=[t])
-
-            if var_name not in data_vars:
-                data_vars[var_name] = []
-
-            data_vars[var_name].append(band_da)
-
-    for var_name, time_series in data_vars.items():
-        if "time" in time_series[0].dims:
-            data_vars[var_name] = xarray.concat(time_series, dim="time", join="exact")
-        else:
-            data_vars[var_name] = time_series[0]
-
-    return xarray.Dataset(
-        data_vars=data_vars,
-        attrs={
-            "provider_name": res.provider_name,
-            "dataset_name": res.dataset_name,
-            "dataset_id": res.dataset_id,
-            "aoi_id": res.aoi_id,
-            "subscription_id": res.data_request_id,
-        },
-    )
-
-
-def _list_keys_v2(session: boto3.session.Session, bucket_name, prefix) -> list[str]:
-    s3_client = session.client("s3")
-    paginator = s3_client.get_paginator("list_objects_v2")
-    page_iterator = paginator.paginate(
-        Bucket=bucket_name,
-        Prefix=prefix,
-    )
-
-    keys = []
-    for page in page_iterator:
-        for obj in page.get("Contents", []):
-            keys.append(obj["Key"])
-
-    return keys
-
-
-def _load_file_v2(aws_session: boto3.session.Session, url: str):
-    with rasterio.env.Env(
-        session=rasterio.session.AWSSession(aws_session),
-        GDAL_DISABLE_READDIR_ON_OPEN=True,
-    ):
-        return rioxarray.open_rasterio(
-            url,
-            chunks={"x": 2000, "y": 2000},
-        )
-
-
-# v3
-
-
-def load_xarray_v3(res: SubscriptionListFiles) -> xarray.Dataset:
-    session = boto3.session.Session(
-        aws_access_key_id=res.credentials.access_key_id,
-        aws_secret_access_key=res.credentials.secret_access_key,
-        aws_session_token=res.credentials.session_token,
-    )
-
-    keys = _list_keys_v3(session, res.bucket.name, res.bucket.prefix)
-
-    if not keys:
-        return xarray.Dataset()
-
-    timestamp_pattern = re.compile(r"\d{4}/\d{2}/\d{2}/\d{2}/\d{2}/\d{2}")
-    data_vars = {}
-
     with rasterio.env.Env(
         session=rasterio.session.AWSSession(session),
-        GDAL_DISABLE_READDIR_ON_OPEN=True,
     ):
         first_file = rioxarray.open_rasterio(
             f"s3://{res.bucket.name}/{keys[0]}", chunks="auto"
@@ -214,19 +113,19 @@ def load_xarray_v3(res: SubscriptionListFiles) -> xarray.Dataset:
             continue
 
         lazy_array = dask.array.from_delayed(
-            dask.delayed(_load_file_v3)(session, f"s3://{res.bucket.name}/{key}"),
+            dask.delayed(_load_file_v2)(session, f"s3://{res.bucket.name}/{key}"),
             shape=first_file.shape,
             dtype=file_info.type,
         )
         lazy_da = xarray.DataArray(
             lazy_array,
             dims=first_file.dims,
-            coords=dict(first_file.coords),
-            # attrs=first_file.attrs.copy() # TODO: not the same for all files
+            # coords=dict(first_file.coords),
+            # attrs=first_file.attrs.copy() # TODO: not the same for all files?
         )
-        # lazy_da.encoding = first_file.encoding.copy()
-        # lazy_da.rio.write_crs(first_file.rio.crs, inplace=True)
-        # lazy_da.rio.write_transform(first_file.rio.transform(), inplace=True)
+        # lazy_da.encoding = first_file.encoding.copy() # TODO: not the same for all files?
+        lazy_da.rio.write_crs(first_file.rio.crs, inplace=True)
+        lazy_da.rio.write_transform(first_file.rio.transform(), inplace=True)
 
         timestamp_str = timestamp_pattern.search(key).group()
 
@@ -253,6 +152,10 @@ def load_xarray_v3(res: SubscriptionListFiles) -> xarray.Dataset:
 
     return xarray.Dataset(
         data_vars=data_vars,
+        # coords={
+        #     "y": first_file_metadata["y"],
+        #     "x": first_file_metadata["x"],
+        # },
         attrs={
             "provider_name": res.provider_name,
             "dataset_name": res.dataset_name,
@@ -263,21 +166,15 @@ def load_xarray_v3(res: SubscriptionListFiles) -> xarray.Dataset:
     )
 
 
-def _load_file_v3(aws_session: boto3.session.Session, url: str):
+def _load_file_v2(aws_session: boto3.session.Session, url: str):
     with rasterio.env.Env(
         session=rasterio.session.AWSSession(aws_session),
-        GDAL_DISABLE_READDIR_ON_OPEN=True,
     ):
-        return rioxarray.open_rasterio(
-            url,
-            chunks="auto",
-        ).values
-        # ).sel(band=num_band, drop=True)
-        # ).sel(band=num_band, drop=True).values
-        # ).isel(band=num_band-1).values
+        with rasterio.open(url) as src:
+            return src.read()
 
 
-def _list_keys_v3(session: boto3.session.Session, bucket_name, prefix) -> list[str]:
+def _list_keys_v2(session: boto3.session.Session, bucket_name, prefix) -> list[str]:
     s3_client = session.client("s3")
     paginator = s3_client.get_paginator("list_objects_v2")
     page_iterator = paginator.paginate(
@@ -304,7 +201,7 @@ def load_xarray_v4(res: SubscriptionListFiles) -> xarray.Dataset:
         aws_session_token=res.credentials.session_token,
     )
 
-    keys = _list_keys_v2(session, res.bucket.name, res.bucket.prefix)
+    keys = _list_keys_v4(session, res.bucket.name, res.bucket.prefix)
 
     if not keys:
         return xarray.Dataset()
@@ -380,7 +277,7 @@ def load_xarray_v4(res: SubscriptionListFiles) -> xarray.Dataset:
 
 def _get_file_metadata_v4(session, bucket: str, path: str):
     with rasterio.env.Env(
-        rasterio.session.AWSSession(session), GDAL_DISABLE_READDIR_ON_OPEN=True
+        rasterio.session.AWSSession(session),
     ):
         da = xarray.open_dataarray(f"s3://{bucket}/{path}", engine="rasterio")
 
@@ -405,7 +302,7 @@ def _create_dask_array_v4(
 
     def read_chunk():
         with rasterio.env.Env(
-            session=rasterio_session, GDAL_DISABLE_READDIR_ON_OPEN=True
+            session=rasterio_session,
         ):
             with rasterio.open(file_path) as src:
                 return src.read(band_num)
@@ -413,3 +310,19 @@ def _create_dask_array_v4(
     return dask.array.from_delayed(
         dask.delayed(read_chunk)(), shape=(height, width), dtype=dtype
     )
+
+
+def _list_keys_v4(session: boto3.session.Session, bucket_name, prefix) -> list[str]:
+    s3_client = session.client("s3")
+    paginator = s3_client.get_paginator("list_objects_v2")
+    page_iterator = paginator.paginate(
+        Bucket=bucket_name,
+        Prefix=prefix,
+    )
+
+    keys = []
+    for page in page_iterator:
+        for obj in page.get("Contents", []):
+            keys.append(obj["Key"])
+
+    return keys
