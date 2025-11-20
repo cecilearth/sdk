@@ -308,12 +308,12 @@ class Client:
     def update_organisation_settings(
         self,
         *,
-        monthly_data_request_limit,
+        monthly_subscription_limit,
     ) -> OrganisationSettings:
         res = self._post(
             url="/v0/organisation/settings",
             model=OrganisationSettings(
-                monthly_data_request_limit=monthly_data_request_limit,
+                monthly_subscription_limit=monthly_subscription_limit,
             ),
         )
         return OrganisationSettings(**res)
