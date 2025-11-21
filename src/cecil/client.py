@@ -104,14 +104,14 @@ class Client:
         return [DataRequest(**record) for record in res["records"]]
 
     def list_subscriptions(self) -> List[Subscription]:
-        res = self._get(url="/v0/data-requests")
+        res = self._get(url="/v0/subscriptions")
         return [Subscription(**record) for record in res["records"]]
 
     def create_subscription(
         self, aoi_id: str, dataset_id: str, external_ref: Optional[str] = None
     ) -> Subscription:
         res = self._post(
-            url="/v0/data-requests",
+            url="/v0/subscriptions",
             model=SubscriptionCreate(
                 aoi_id=aoi_id, dataset_id=dataset_id, external_ref=external_ref
             ),
@@ -120,7 +120,7 @@ class Client:
         return Subscription(**res)
 
     def get_subscription(self, id: str) -> Subscription:
-        res = self._get(url=f"/v0/data-requests/{id}")
+        res = self._get(url=f"/v0/subscriptions/{id}")
         return Subscription(**res)
 
     def load_xarray(
@@ -145,7 +145,7 @@ class Client:
             subscription_id = data_request_id
 
         res = SubscriptionMetadata(
-            **self._get(url=f"/v0/data-requests/{subscription_id}/metadata")
+            **self._get(url=f"/v0/subscriptions/{subscription_id}/metadata")
         )
         return load_xarray(res)
 
@@ -171,7 +171,7 @@ class Client:
             subscription_id = data_request_id
 
         res = SubscriptionListFiles(
-            **self._get(url=f"/v0/data-requests/{subscription_id}/files/tiff")
+            **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
         )
         return load_xarray_v2(res)
 
@@ -197,7 +197,7 @@ class Client:
             subscription_id = data_request_id
 
         res = SubscriptionParquetFiles(
-            **self._get(url=f"/v0/data-requests/{subscription_id}/parquet-files")
+            **self._get(url=f"/v0/subscriptions/{subscription_id}/parquet-files")
         )
         df = pd.concat((pd.read_parquet(f) for f in res.files))
         return df[
