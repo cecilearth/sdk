@@ -114,7 +114,7 @@ class UserCreate(BaseModel):
     email: str
 
 
-class Band(BaseModel):
+class BandV1(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     variable_name: str
     time: str
@@ -122,10 +122,10 @@ class Band(BaseModel):
     number: int
 
 
-class File(BaseModel):
+class FileV1(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     url: str
-    bands: List[Band]
+    bands: List[BandV1]
 
 
 class SubscriptionMetadata(BaseModel):
@@ -136,7 +136,7 @@ class SubscriptionMetadata(BaseModel):
     dataset_crs: str
     aoi_id: str
     data_request_id: str
-    files: List[File]
+    files: List[FileV1]
 
 
 class Bucket(BaseModel):
@@ -153,9 +153,15 @@ class BucketCredentials(BaseModel):
     expiration: datetime.datetime
 
 
-class FileMapping(BaseModel):
-    type: str
-    bands: List
+class Band(BaseModel):
+    number: int
+    name: str
+    dtype: str
+    nodata: Optional[float | int] = None
+
+
+class File(BaseModel):
+    bands: List[Band]
 
 
 class SubscriptionListFiles(BaseModel):
@@ -168,7 +174,7 @@ class SubscriptionListFiles(BaseModel):
     bucket: Bucket
     credentials: BucketCredentials
     allowed_actions: List
-    file_mapping: Dict[str, FileMapping]
+    file_mapping: Dict[str, File]
 
 
 class SubscriptionParquetFiles(BaseModel):

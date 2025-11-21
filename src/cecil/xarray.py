@@ -8,6 +8,7 @@ import rasterio
 import rasterio.session
 import rioxarray
 import xarray
+import numpy as np
 
 from .models import SubscriptionMetadata, SubscriptionListFiles
 
@@ -114,17 +115,20 @@ def load_xarray_v2(res: SubscriptionListFiles) -> xarray.Dataset:
 
         timestamp_str = timestamp_pattern.search(key).group()
 
-        for band_num, var_name in enumerate(file_info.bands, start=1):
+        for band_info in file_info.bands:
             lazy_array = dask.array.from_delayed(
                 dask.delayed(_load_file_v2)(
-                    session, f"s3://{res.bucket.name}/{key}", band_num
+                    session, f"s3://{res.bucket.name}/{key}", band_info.number
                 ),
                 shape=(
                     first_file.rio.height,
                     first_file.rio.width,
                 ),
-                dtype=file_info.type,
+                dtype=band_info.dtype,
             )
+
+            nodata = band_info.nodata if band_info.nodata is not None else np.nan
+
             band_da = xarray.DataArray(
                 lazy_array,
                 dims=("y", "x"),
@@ -132,13 +136,18 @@ def load_xarray_v2(res: SubscriptionListFiles) -> xarray.Dataset:
                     "y": first_file.y.values,
                     "x": first_file.x.values,
                 },
-                # attrs=first_file.attrs.copy() # TODO: is it the same for all files?
+                attrs={
+                    "AREA_OR_POINT": first_file.attrs["AREA_OR_POINT"],
+                    "_FillValue": np.dtype(band_info.dtype).type(nodata),
+                    "scale_factor": first_file.attrs["scale_factor"],
+                    "add_offset": first_file.attrs["add_offset"],
+                },
             )
             # band_da.encoding = first_file.encoding.copy() # TODO: is it the same for all files?
             band_da.rio.write_crs(first_file.rio.crs, inplace=True)
             band_da.rio.write_transform(first_file.rio.transform(), inplace=True)
 
-            band_da.name = var_name
+            band_da.name = band_info.name
 
             # Dataset with time dimension
             if timestamp_str != "0000/00/00/00/00/00":
@@ -146,10 +155,10 @@ def load_xarray_v2(res: SubscriptionListFiles) -> xarray.Dataset:
                 band_da = band_da.expand_dims("time")
                 band_da = band_da.assign_coords(time=[t])
 
-            if var_name not in data_vars:
-                data_vars[var_name] = []
+            if band_info.name not in data_vars:
+                data_vars[band_info.name] = []
 
-            data_vars[var_name].append(band_da)
+            data_vars[band_info.name].append(band_da)
 
     for var_name, time_series in data_vars.items():
         if "time" in time_series[0].dims:
