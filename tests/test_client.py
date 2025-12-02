@@ -1,7 +1,7 @@
 import responses
 
 from src.cecil.client import Client
-from src.cecil.models import DataRequest
+from src.cecil.models import Subscription
 
 FROZEN_TIME = "2024-01-01T00:00:00.000Z"
 
@@ -12,10 +12,10 @@ def test_client_class():
 
 
 @responses.activate
-def test_client_create_data_request():
+def test_client_create_subscription():
     responses.add(
         responses.POST,
-        "https://api.cecil.earth/v0/data-requests",
+        "https://api.cecil.earth/v0/subscriptions",
         json={
             "id": "id",
             "aoiId": "aoi_id",
@@ -28,9 +28,9 @@ def test_client_create_data_request():
     )
 
     client = Client()
-    res = client.create_data_request("aoi_id", "dataset_id")
+    res = client.create_subscription("aoi_id", "dataset_id")
 
-    assert res == DataRequest(
+    assert res == Subscription(
         id="id",
         aoiId="aoi_id",
         datasetId="dataset_id",
@@ -41,14 +41,14 @@ def test_client_create_data_request():
 
 
 @responses.activate
-def test_client_list_data_requests():
+def test_client_list_subscriptions():
     responses.add(
         responses.GET,
-        "https://api.cecil.earth/v0/data-requests",
+        "https://api.cecil.earth/v0/subscriptions",
         json={
             "records": [
                 {
-                    "id": "data_request_id_1",
+                    "id": "subscription_id_1",
                     "aoiId": "aoi_id",
                     "datasetId": "dataset_id",
                     "externalRef": "external_ref",
@@ -56,7 +56,7 @@ def test_client_list_data_requests():
                     "created_by": "user_id",
                 },
                 {
-                    "id": "data_request_id_2",
+                    "id": "subscription_id_2",
                     "aoiId": "aoi_id",
                     "datasetId": "dataset_id",
                     "externalRef": "",
@@ -68,19 +68,19 @@ def test_client_list_data_requests():
     )
 
     client = Client()
-    data_requests = client.list_data_requests()
+    subscriptions = client.list_subscriptions()
 
-    assert data_requests == [
-        DataRequest(
-            id="data_request_id_1",
+    assert subscriptions == [
+        Subscription(
+            id="subscription_id_1",
             aoiId="aoi_id",
             datasetId="dataset_id",
             externalRef="external_ref",
             created_at="2024-09-19T04:45:57.561Z",
             created_by="user_id",
         ),
-        DataRequest(
-            id="data_request_id_2",
+        Subscription(
+            id="subscription_id_2",
             aoiId="aoi_id",
             datasetId="dataset_id",
             externalRef="",

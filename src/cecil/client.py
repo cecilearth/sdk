@@ -1,11 +1,9 @@
 import os
 from typing import Dict, List, Optional
-from warnings import warn
 
 import pandas as pd
 import requests
-import snowflake.connector
-from cryptography.hazmat.primitives import serialization
+
 from pydantic import BaseModel
 from requests import auth
 
@@ -22,19 +20,13 @@ from .models import (
     AOI,
     AOIRecord,
     AOICreate,
-    DataRequest,
-    DataRequestCreate,
     OrganisationSettings,
     RecoverAPIKey,
     RecoverAPIKeyRequest,
     RotateAPIKey,
     RotateAPIKeyRequest,
-    SnowflakeUserCredentials,
-    Transformation,
-    TransformationCreate,
     User,
     UserCreate,
-    SubscriptionMetadata,
     SubscriptionParquetFiles,
     SubscriptionListFiles,
     Subscription,
@@ -42,7 +34,6 @@ from .models import (
 )
 from .version import __version__
 from .xarray import load_xarray
-from .xarray import load_xarray_v2
 
 
 class Client:
@@ -51,7 +42,6 @@ class Client:
         self._base_url = (
             "https://api.cecil.earth" if env is None else f"https://{env}.cecil.earth"
         )
-        self._snowflake_user_creds = None
 
     def create_aoi(self, geometry: Dict, external_ref: Optional[str] = None) -> AOI:
         # TODO: validate geometry
@@ -68,40 +58,6 @@ class Client:
     def list_aois(self) -> List[AOIRecord]:
         res = self._get(url="/v0/aois")
         return [AOIRecord(**record) for record in res["records"]]
-
-    def create_data_request(
-        self, aoi_id: str, dataset_id: str, external_ref: Optional[str] = None
-    ) -> DataRequest:
-        warn(
-            "create_data_request() is deprecated, use create_subscription() instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        res = self._post(
-            url="/v0/data-requests",
-            model=DataRequestCreate(
-                aoi_id=aoi_id, dataset_id=dataset_id, external_ref=external_ref
-            ),
-        )
-        return DataRequest(**res)
-
-    def get_data_request(self, id: str) -> DataRequest:
-        warn(
-            "get_data_request() is deprecated, use get_subscription() instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        res = self._get(url=f"/v0/data-requests/{id}")
-        return DataRequest(**res)
-
-    def list_data_requests(self) -> List[DataRequest]:
-        warn(
-            "list_data_requests() is deprecated, use list_subscriptions() instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        res = self._get(url="/v0/data-requests")
-        return [DataRequest(**record) for record in res["records"]]
 
     def list_subscriptions(self) -> List[Subscription]:
         res = self._get(url="/v0/subscriptions")
@@ -123,150 +79,17 @@ class Client:
         res = self._get(url=f"/v0/subscriptions/{id}")
         return Subscription(**res)
 
-    def load_xarray(
-        self,
-        subscription_id: Optional[str] = None,
-        data_request_id: Optional[str] = None,
-    ) -> xarray.Dataset:
-        if subscription_id is None and data_request_id is None:
-            raise TypeError("load_xarray() missing argument: 'subscription_id'")
-
-        if subscription_id is not None and data_request_id is not None:
-            raise ValueError(
-                "load_xarray() only accepts one argument but two were provided"
-            )
-
-        if data_request_id:
-            warn(
-                "data_request_id is deprecated, use subscription_id instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            subscription_id = data_request_id
-
-        res = SubscriptionMetadata(
-            **self._get(url=f"/v0/subscriptions/{subscription_id}/metadata")
-        )
-        return load_xarray(res)
-
-    def _load_xarray_v2(
-        self,
-        subscription_id: Optional[str] = None,
-        data_request_id: Optional[str] = None,
-    ) -> xarray.Dataset:
-        if subscription_id is None and data_request_id is None:
-            raise TypeError("load_xarray_v2() missing argument: 'subscription_id'")
-
-        if subscription_id is not None and data_request_id is not None:
-            raise ValueError(
-                "load_xarray_v2() only accepts one argument but two were provided"
-            )
-
-        if data_request_id:
-            warn(
-                "data_request_id is deprecated, use subscription_id instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            subscription_id = data_request_id
-
+    def load_xarray(self, subscription_id: str) -> xarray.Dataset:
         res = SubscriptionListFiles(
             **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
         )
-        return load_xarray_v2(res)
+        return load_xarray(res)
 
-    def load_dataframe(
-        self,
-        subscription_id: Optional[str] = None,
-        data_request_id: Optional[str] = None,
-    ) -> pd.DataFrame:
-        if subscription_id is None and data_request_id is None:
-            raise TypeError("load_dataframe missing argument: 'subscription_id'")
-
-        if subscription_id is not None and data_request_id is not None:
-            raise ValueError(
-                "load_dataframe only accepts one argument but two were provided"
-            )
-
-        if data_request_id:
-            warn(
-                "data_request_id is deprecated, use subscription_id instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            subscription_id = data_request_id
-
+    def load_dataframe(self, subscription_id: str) -> pd.DataFrame:
         res = SubscriptionParquetFiles(
             **self._get(url=f"/v0/subscriptions/{subscription_id}/parquet-files")
         )
-        df = pd.concat((pd.read_parquet(f) for f in res.files))
-        return df[
-            [col for col in df.columns if col not in ("organisation_id", "created_at")]
-        ]
-
-    def create_transformation(
-        self, data_request_id: str, crs: str, spatial_resolution: float
-    ) -> Transformation:
-        warn(
-            "create_transformation() is deprecated, refer to https://github.com/cecilearth/examples",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        res = self._post(
-            url="/v0/transformations",
-            model=TransformationCreate(
-                data_request_id=data_request_id,
-                crs=crs,
-                spatial_resolution=spatial_resolution,
-            ),
-        )
-        return Transformation(**res)
-
-    def get_transformation(self, id: str) -> Transformation:
-        warn(
-            "get_transformation() is deprecated.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        res = self._get(url=f"/v0/transformations/{id}")
-        return Transformation(**res)
-
-    def list_transformations(self) -> List[Transformation]:
-        warn(
-            "list_transformations() is deprecated.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        res = self._get(url="/v0/transformations")
-        return [Transformation(**record) for record in res["records"]]
-
-    def query(self, sql: str) -> pd.DataFrame:
-        warn(
-            "query() is deprecated, use load_xarray() or load_dataframe() instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self._query(sql)
-
-    def _query(self, sql: str) -> pd.DataFrame:
-        if self._snowflake_user_creds is None:
-            res = self._get(url="/v0/snowflake-user-credentials")
-            self._snowflake_user_creds = SnowflakeUserCredentials(**res)
-
-        private_key = serialization.load_pem_private_key(
-            self._snowflake_user_creds.private_key.get_secret_value().encode(),
-            password=None,
-        )
-
-        with snowflake.connector.connect(
-            account=self._snowflake_user_creds.account.get_secret_value(),
-            user=self._snowflake_user_creds.user.get_secret_value(),
-            private_key=private_key,
-        ) as conn:
-            df = conn.cursor().execute(sql).fetch_pandas_all()
-            df.columns = [x.lower() for x in df.columns]
-
-            return df
+        return pd.concat((pd.read_parquet(f) for f in res.files))
 
     def recover_api_key(self, email: str) -> RecoverAPIKey:
         res = self._post(
@@ -320,7 +143,7 @@ class Client:
 
     def _request(self, method: str, url: str, skip_auth=False, **kwargs) -> Dict:
 
-        if skip_auth is False:
+        if not skip_auth:
             self._set_auth()
 
         headers = {"cecil-python-sdk-version": __version__}
