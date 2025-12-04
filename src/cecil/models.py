@@ -82,6 +82,7 @@ class BucketCredentials(BaseModel):
     access_key_id: str
     secret_access_key: str
     session_token: str
+    region: str
     expiration: datetime.datetime
 
 
