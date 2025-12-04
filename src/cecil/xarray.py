@@ -17,6 +17,7 @@ def load_xarray(res: SubscriptionListFiles) -> xarray.Dataset:
         aws_access_key_id=res.credentials.access_key_id,
         aws_secret_access_key=res.credentials.secret_access_key,
         aws_session_token=res.credentials.session_token,
+        region_name="us-east-1",
     )
 
     keys = _list_keys(session, res.bucket.name, res.bucket.prefix)

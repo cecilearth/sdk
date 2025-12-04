@@ -10,3 +10,4 @@ dist
 tmp
 venv
 .venv
+.python-version
