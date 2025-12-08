@@ -89,6 +89,10 @@ class Client:
         res = SubscriptionParquetFiles(
             **self._get(url=f"/v0/subscriptions/{subscription_id}/parquet-files")
         )
+
+        if not res.files:
+            return pd.DataFrame()
+
         return pd.concat((pd.read_parquet(f) for f in res.files))
 
     def recover_api_key(self, email: str) -> RecoverAPIKey:
