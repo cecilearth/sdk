@@ -36,6 +36,18 @@ def _handle_bad_request(response):
     raise Error("bad request", details)
 
 
+def _handle_forbidden(response):
+    if not _is_json(response.text):
+        raise Error(f"forbidden")
+
+    details = {}
+
+    for key, value in response.json().items():
+        details[_format_json_key(key)] = value
+
+    raise Error(f"forbidden", details)
+
+
 def _handle_method_not_allowed(response):
     if not _is_json(response.text):
         raise Error("method not allowed")
@@ -75,11 +87,15 @@ def _handle_unprocessable_entity(response):
         raise Error(f"failed to process request")
 
     res_body = response.json()
-    if "params" not in res_body:
-        raise Error(f"failed to process request")
+
+    items = res_body.items()
+
+    if "params" in res_body:
+        items = res_body["params"].items()
 
     details = {}
-    for key, value in res_body["params"].items():
+
+    for key, value in items:
         details[_format_json_key(key)] = value
 
     raise Error(f"failed to process request", details)

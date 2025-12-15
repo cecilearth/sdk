@@ -11,6 +11,7 @@ import xarray
 from .errors import (
     Error,
     _handle_bad_request,
+    _handle_forbidden,
     _handle_method_not_allowed,
     _handle_not_found,
     _handle_too_many_requests,
@@ -176,6 +177,8 @@ class Client:
                     _handle_bad_request(err.response)
                 case 401:
                     raise Error("unauthorised")
+                case 403:
+                    _handle_forbidden(err.response)
                 case 404:
                     _handle_not_found(err.response)
                 case 405:
