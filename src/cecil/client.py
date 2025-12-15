@@ -18,7 +18,6 @@ from .errors import (
 )
 from .models import (
     AOI,
-    AOIRecord,
     AOICreate,
     OrganisationSettings,
     RecoverAPIKey,
@@ -43,7 +42,7 @@ class Client:
             "https://api.cecil.earth" if env is None else f"https://{env}.cecil.earth"
         )
 
-    def create_aoi(self, geometry: Dict, external_ref: Optional[str] = None) -> AOI:
+    def create_aoi(self, geometry: Dict, external_ref: str = "") -> AOI:
         # TODO: validate geometry
         res = self._post(
             url="/v0/aois",
@@ -55,16 +54,16 @@ class Client:
         res = self._get(url=f"/v0/aois/{id}")
         return AOI(**res)
 
-    def list_aois(self) -> List[AOIRecord]:
+    def list_aois(self) -> List[AOI]:
         res = self._get(url="/v0/aois")
-        return [AOIRecord(**record) for record in res["records"]]
+        return [AOI(**record) for record in res["records"]]
 
     def list_subscriptions(self) -> List[Subscription]:
         res = self._get(url="/v0/subscriptions")
         return [Subscription(**record) for record in res["records"]]
 
     def create_subscription(
-        self, aoi_id: str, dataset_id: str, external_ref: Optional[str] = None
+        self, aoi_id: str, dataset_id: str, external_ref: str = ""
     ) -> Subscription:
         res = self._post(
             url="/v0/subscriptions",
