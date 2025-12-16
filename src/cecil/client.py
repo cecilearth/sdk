@@ -93,7 +93,7 @@ class Client:
         if not res.files:
             return pd.DataFrame()
 
-        return pd.concat((pd.read_parquet(f) for f in res.files))
+        return pd.concat((pd.read_parquet(f) for f in res.files)).reset_index(drop=True)
 
     def recover_api_key(self, email: str) -> RecoverAPIKey:
         res = self._post(
