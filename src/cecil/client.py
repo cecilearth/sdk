@@ -20,6 +20,7 @@ from .errors import (
 from .models import (
     AOI,
     AOICreate,
+    Dataset,
     OrganisationSettings,
     RecoverAPIKey,
     RecoverAPIKeyRequest,
@@ -144,6 +145,13 @@ class Client:
             ),
         )
         return OrganisationSettings(**res)
+
+    def list_datasets(self) -> List[Dataset]:
+        res = self._get(
+            url="/v0/datasets"
+        )
+
+        return [Dataset(**record) for record in res["records"]]
 
     def _request(self, method: str, url: str, skip_auth=False, **kwargs) -> Dict:
 

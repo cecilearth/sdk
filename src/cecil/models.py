@@ -121,3 +121,13 @@ class SubscriptionCreate(BaseModel):
     aoi_id: str
     dataset_id: str
     external_ref: str
+
+class Dataset(BaseModel):
+    id: str
+    name: str
+    provider_name: str
+    category: str
+    type: str
+    crs: str
+    version_number: str
+    version_date: str
