@@ -23,7 +23,6 @@ from .models import (
     SubscriptionListFiles,
     Subscription,
     SubscriptionCreate,
-    DeleteWebhook,
     Webhook,
     WebhookConfigure,
 )
@@ -201,7 +200,7 @@ class Client:
     def configure_webhook(self, url: str, secret: str = None) -> Webhook:
         try:
             res = self._post(
-                url="/v0/organisation/webhooks",
+                url="/v0/webhooks",
                 model=WebhookConfigure(url=url, secret=secret),
             )
             return Webhook(**res)
@@ -211,8 +210,8 @@ class Client:
 
     def delete_webhook(self):
         try:
-            res = self._delete(url="/v0/organisation/webhooks")
-            return DeleteWebhook(**res)
+            self._delete(url="/v0/webhooks")
+            return
 
         except Exception as e:
             raise e.with_traceback(None) from None
@@ -225,7 +224,7 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def _request(self, method: str, url: str, skip_auth=False, **kwargs) -> Dict:
+    def _request(self, method: str, url: str, skip_auth=False, **kwargs) -> Dict|str:
 
         if not skip_auth:
             self._set_auth()
@@ -242,10 +241,14 @@ class Client:
                 **kwargs,
             )
             r.raise_for_status()
-            return r.json()
 
         except requests.exceptions.HTTPError as err:
             raise HTTPError(err)
+
+        try:
+            return r.json()
+        except ValueError:
+            return r.text
 
     def _get(self, url: str, **kwargs) -> Dict:
         return self._request(method="get", url=url, **kwargs)
