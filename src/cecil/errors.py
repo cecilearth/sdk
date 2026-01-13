@@ -1,101 +1,37 @@
+import http.client
 import json
+import requests.exceptions
 
 
 class Error(Exception):
-    def __init__(self, message: str, details=None):
-        self.message = message
-        self.details = details
-
-        if self.details is not None:
-            super().__init__(f"{self.message} \n{json.dumps(self.details, indent=2)}")
-            return
-
-        super().__init__(self.message)
+    pass
 
 
-def _format_json_key(value: str):
-    return "".join(["_" + i.lower() if i.isupper() else i for i in value]).lstrip("_")
+class HTTPError(Error):
+    def __init__(self, err: requests.exceptions.HTTPError):
+        super().__init__(err)
+        self.status_code = err.response.status_code
+        self.status = http.client.responses[self.status_code]
+        try:
+            self.response_body = json.loads(err.response.text)
+        except ValueError:
+            self.response_body = {"message": err.response.text}
+
+    def __str__(self):
+        message = f"{self.status} ({self.status_code})"
+
+        if self.status_code >= 500:
+            return message
+
+        return (
+            message
+            + "\n"
+            + json.dumps(
+                self.response_body,
+                indent=2,
+            )
+        )
 
 
-def _is_json(value: str):
-    try:
-        json.loads(value)
-        return True
-    except ValueError:
-        return False
-
-
-def _handle_bad_request(response):
-    if not _is_json(response.text):
-        raise Error("bad request")
-
-    details = {}
-    for key, value in response.json().items():
-        details[_format_json_key(key)] = value
-
-    raise Error("bad request", details)
-
-
-def _handle_forbidden(response):
-    if not _is_json(response.text):
-        raise Error(f"forbidden")
-
-    details = {}
-
-    for key, value in response.json().items():
-        details[_format_json_key(key)] = value
-
-    raise Error(f"forbidden", details)
-
-
-def _handle_method_not_allowed(response):
-    if not _is_json(response.text):
-        raise Error("method not allowed")
-
-    details = {}
-    for key, value in response.json().items():
-        details[_format_json_key(key)] = value
-
-    raise Error("method not allowed", details)
-
-
-def _handle_not_found(response):
-    if not _is_json(response.text):
-        raise Error("resource not found")
-
-    details = {}
-    for key, value in response.json().items():
-        details[_format_json_key(key)] = value
-
-    raise Error("resource not found", details)
-
-
-def _handle_too_many_requests(response):
-    if not _is_json(response.text):
-        raise Error("too many requests")
-
-    details = {}
-
-    for key, value in response.json().items():
-        details[_format_json_key(key)] = value
-
-    raise Error("too many requests", details)
-
-
-def _handle_unprocessable_entity(response):
-    if not _is_json(response.text):
-        raise Error(f"failed to process request")
-
-    res_body = response.json()
-
-    items = res_body.items()
-
-    if "params" in res_body:
-        items = res_body["params"].items()
-
-    details = {}
-
-    for key, value in items:
-        details[_format_json_key(key)] = value
-
-    raise Error(f"failed to process request", details)
+class SDKError(Error):
+    pass

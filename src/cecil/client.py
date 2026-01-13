@@ -1,22 +1,13 @@
 import os
-from typing import Dict, List, Optional
+import requests
+from typing import Dict, List
 
 import pandas as pd
-import requests
-
+import xarray
 from pydantic import BaseModel
 from requests import auth
 
-import xarray
-from .errors import (
-    Error,
-    _handle_bad_request,
-    _handle_forbidden,
-    _handle_method_not_allowed,
-    _handle_not_found,
-    _handle_too_many_requests,
-    _handle_unprocessable_entity,
-)
+from .errors import HTTPError, SDKError
 from .models import (
     AOI,
     AOICreate,
@@ -48,124 +39,191 @@ class Client:
         )
 
     def create_aoi(self, geometry: Dict, external_ref: str = "") -> AOI:
-        # TODO: validate geometry
-        res = self._post(
-            url="/v0/aois",
-            model=AOICreate(geometry=geometry, external_ref=external_ref),
-        )
-        return AOI(**res)
+        try:
+            res = self._post(
+                url="/v0/aois",
+                model=AOICreate(geometry=geometry, external_ref=external_ref),
+            )
+            return AOI(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def get_aoi(self, id: str) -> AOI:
-        res = self._get(url=f"/v0/aois/{id}")
-        return AOI(**res)
+        try:
+            res = self._get(url=f"/v0/aois/{id}")
+            return AOI(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def list_aois(self) -> List[AOI]:
-        res = self._get(url="/v0/aois")
-        return [AOI(**record) for record in res["records"]]
+        try:
+            res = self._get(url="/v0/aois")
+            return [AOI(**record) for record in res["records"]]
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def list_subscriptions(self) -> List[Subscription]:
-        res = self._get(url="/v0/subscriptions")
-        return [Subscription(**record) for record in res["records"]]
+        try:
+            res = self._get(url="/v0/subscriptions")
+            return [Subscription(**record) for record in res["records"]]
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def create_subscription(
         self, aoi_id: str, dataset_id: str, external_ref: str = ""
     ) -> Subscription:
-        res = self._post(
-            url="/v0/subscriptions",
-            model=SubscriptionCreate(
-                aoi_id=aoi_id, dataset_id=dataset_id, external_ref=external_ref
-            ),
-        )
+        try:
+            res = self._post(
+                url="/v0/subscriptions",
+                model=SubscriptionCreate(
+                    aoi_id=aoi_id, dataset_id=dataset_id, external_ref=external_ref
+                ),
+            )
+            return Subscription(**res)
 
-        return Subscription(**res)
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def get_subscription(self, id: str) -> Subscription:
-        res = self._get(url=f"/v0/subscriptions/{id}")
-        return Subscription(**res)
+        try:
+            res = self._get(url=f"/v0/subscriptions/{id}")
+            return Subscription(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def load_xarray(self, subscription_id: str) -> xarray.Dataset:
-        res = SubscriptionListFiles(
-            **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
-        )
-        return load_xarray(res)
+        try:
+            res = SubscriptionListFiles(
+                **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
+            )
+            return load_xarray(res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def load_dataframe(self, subscription_id: str) -> pd.DataFrame:
-        res = SubscriptionParquetFiles(
-            **self._get(url=f"/v0/subscriptions/{subscription_id}/parquet-files")
-        )
+        try:
+            res = SubscriptionParquetFiles(
+                **self._get(url=f"/v0/subscriptions/{subscription_id}/parquet-files")
+            )
 
-        if not res.files:
-            return pd.DataFrame()
+            if not res.files:
+                return pd.DataFrame()
 
-        return pd.concat((pd.read_parquet(f) for f in res.files)).reset_index(drop=True)
+            return pd.concat((pd.read_parquet(f) for f in res.files)).reset_index(
+                drop=True
+            )
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def recover_api_key(self, email: str) -> RecoverAPIKey:
-        res = self._post(
-            url="/v0/api-key/recover",
-            model=RecoverAPIKeyRequest(email=email),
-            skip_auth=True,
-        )
+        try:
+            res = self._post(
+                url="/v0/api-key/recover",
+                model=RecoverAPIKeyRequest(email=email),
+                skip_auth=True,
+            )
+            return RecoverAPIKey(**res)
 
-        return RecoverAPIKey(**res)
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def rotate_api_key(self) -> RotateAPIKey:
-        res = self._post(url=f"/v0/api-key/rotate", model=RotateAPIKeyRequest())
+        try:
+            res = self._post(url=f"/v0/api-key/rotate", model=RotateAPIKeyRequest())
+            return RotateAPIKey(**res)
 
-        return RotateAPIKey(**res)
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def create_user(self, first_name: str, last_name: str, email: str) -> User:
-        res = self._post(
-            url="/v0/users",
-            model=UserCreate(
-                first_name=first_name,
-                last_name=last_name,
-                email=email,
-            ),
-        )
-        return User(**res)
+        try:
+            res = self._post(
+                url="/v0/users",
+                model=UserCreate(
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=email,
+                ),
+            )
+            return User(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def get_user(self, id: str) -> User:
-        res = self._get(url=f"/v0/users/{id}")
-        return User(**res)
+        try:
+            res = self._get(url=f"/v0/users/{id}")
+            return User(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def list_users(self) -> List[User]:
-        res = self._get(url="/v0/users")
-        return [User(**record) for record in res["records"]]
+        try:
+            res = self._get(url="/v0/users")
+            return [User(**record) for record in res["records"]]
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def get_organisation_settings(self) -> OrganisationSettings:
-        res = self._get(url="/v0/organisation/settings")
-        return OrganisationSettings(**res)
+        try:
+            res = self._get(url="/v0/organisation/settings")
+            return OrganisationSettings(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def update_organisation_settings(
         self,
         *,
         monthly_subscription_limit,
     ) -> OrganisationSettings:
-        res = self._post(
-            url="/v0/organisation/settings",
-            model=OrganisationSettings(
-                monthly_subscription_limit=monthly_subscription_limit,
-            ),
-        )
-        return OrganisationSettings(**res)
+        try:
+            res = self._post(
+                url="/v0/organisation/settings",
+                model=OrganisationSettings(
+                    monthly_subscription_limit=monthly_subscription_limit,
+                ),
+            )
+            return OrganisationSettings(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def configure_webhook(self, url: str, secret: str = None) -> Webhook:
-        res = self._post(
-            url="/v0/organisation/webhooks",
-            model=WebhookConfigure(url=url, secret=secret),
-        )
+        try:
+            res = self._post(
+                url="/v0/organisation/webhooks",
+                model=WebhookConfigure(url=url, secret=secret),
+            )
+            return Webhook(**res)
 
-        return Webhook(**res)
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def delete_webhook(self):
-        res = self._delete(url="/v0/organisation/webhooks")
+        try:
+            res = self._delete(url="/v0/organisation/webhooks")
+            return DeleteWebhook(**res)
 
-        return DeleteWebhook(**res)
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def list_datasets(self) -> List[Dataset]:
-        res = self._get(url="/v0/datasets")
+        try:
+            res = self._get(url="/v0/datasets")
+            return [Dataset(**record) for record in res["records"]]
 
-        return [Dataset(**record) for record in res["records"]]
+        except Exception as e:
+            raise e.with_traceback(None) from None
 
     def _request(self, method: str, url: str, skip_auth=False, **kwargs) -> Dict:
 
@@ -186,36 +244,8 @@ class Client:
             r.raise_for_status()
             return r.json()
 
-        except requests.exceptions.ConnectionError:
-            raise Error("failed to connect to the Cecil Platform")
-
         except requests.exceptions.HTTPError as err:
-            message = f"Request failed with status code {err.response.status_code}"
-            if err.response.text != "":
-                message += f": {err.response.text}"
-
-            match err.response.status_code:
-                case 400:
-                    _handle_bad_request(err.response)
-                case 401:
-                    raise Error("unauthorised")
-                case 403:
-                    _handle_forbidden(err.response)
-                case 404:
-                    _handle_not_found(err.response)
-                case 405:
-                    _handle_method_not_allowed(err.response)
-                case 422:
-                    _handle_unprocessable_entity(err.response)
-                case 429:
-                    _handle_too_many_requests(err.response)
-                case 500:
-                    raise Error("internal server error")
-                case _:
-                    raise Error(
-                        f"request failed with code {err.response.status_code}",
-                        err.response.text,
-                    )
+            raise HTTPError(err)
 
     def _get(self, url: str, **kwargs) -> Dict:
         return self._request(method="get", url=url, **kwargs)
@@ -242,4 +272,4 @@ class Client:
             api_key = os.environ["CECIL_API_KEY"]
             self._api_auth = auth.HTTPBasicAuth(username=api_key, password="")
         except KeyError:
-            raise ValueError("environment variable CECIL_API_KEY not set") from None
+            raise SDKError("Environment variable CECIL_API_KEY not set")
