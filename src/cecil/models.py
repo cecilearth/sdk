@@ -26,6 +26,25 @@ class OrganisationSettings(BaseModel):
     monthly_subscription_limit: Optional[int]
 
 
+class WebhookConfigure(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    url: str
+    secret: Optional[str]
+
+
+class Webhook(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    id: str
+    url: str
+    created_at: datetime.datetime
+    created_by: str
+
+
+class DeleteWebhook(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    message: str
+
+
 class RecoverAPIKey(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     message: str
@@ -121,6 +140,7 @@ class SubscriptionCreate(BaseModel):
     aoi_id: str
     dataset_id: str
     external_ref: str
+
 
 class Dataset(BaseModel):
     id: str

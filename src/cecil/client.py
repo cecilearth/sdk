@@ -32,6 +32,9 @@ from .models import (
     SubscriptionListFiles,
     Subscription,
     SubscriptionCreate,
+    DeleteWebhook,
+    Webhook,
+    WebhookConfigure,
 )
 from .version import __version__
 from .xarray import load_xarray
@@ -146,10 +149,21 @@ class Client:
         )
         return OrganisationSettings(**res)
 
-    def list_datasets(self) -> List[Dataset]:
-        res = self._get(
-            url="/v0/datasets"
+    def configure_webhook(self, url: str, secret: str = None) -> Webhook:
+        res = self._post(
+            url="/v0/organisation/webhooks",
+            model=WebhookConfigure(url=url, secret=secret),
         )
+
+        return Webhook(**res)
+
+    def delete_webhook(self):
+        res = self._delete(url="/v0/organisation/webhooks")
+
+        return DeleteWebhook(**res)
+
+    def list_datasets(self) -> List[Dataset]:
+        res = self._get(url="/v0/datasets")
 
         return [Dataset(**record) for record in res["records"]]
 
@@ -211,6 +225,14 @@ class Client:
             method="post",
             url=url,
             json=model.model_dump(by_alias=True),
+            skip_auth=skip_auth,
+            **kwargs,
+        )
+
+    def _delete(self, url: str, skip_auth=False, **kwargs) -> Dict:
+        return self._request(
+            method="delete",
+            url=url,
             skip_auth=skip_auth,
             **kwargs,
         )
