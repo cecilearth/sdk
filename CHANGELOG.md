@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.7 - 2026-01-13
+
+- Added `configure_webhook()`.
+- Added `delete_webhook()`.
+- Added `HTTPError` and `SDKError`.
+- Improved error handling.
+
 ## 0.1.6 - 2026-01-06
 
 - Added `list_datasets()`.
