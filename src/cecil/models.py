@@ -34,7 +34,6 @@ class WebhookConfigure(BaseModel):
 
 class Webhook(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-    id: str
     url: str
 
 
