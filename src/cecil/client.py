@@ -229,7 +229,7 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def configure_webhook(self, url: str, secret: str = None) -> Webhook:
+    def create_webhook(self, url: str, secret: str = None) -> Webhook:
         try:
             res = self._post(
                 url="/v0/webhooks",
@@ -240,10 +240,24 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def delete_webhook(self):
+    def delete_webhook(self, id: str):
         try:
-            self._delete(url="/v0/webhooks")
-            return
+            self._delete(url=f"/v0/webhooks/{id}")
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def get_webhook(self, id: str) -> Webhook:
+        try:
+            res = self._get(url=f"/v0/webhooks/{id}")
+            return Webhook(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def list_webhooks(self) -> List[Webhook]:
+        try:
+            res = self._get(url=f"/v0/webhooks")
+            return [Webhook(**record) for record in res["records"]]
 
         except Exception as e:
             raise e.with_traceback(None) from None
