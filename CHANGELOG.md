@@ -2,17 +2,21 @@
 
 ## 0.1.8 - 2026-01-20
 
-- Add `list_webhooks()`.
-- Add `get_webhook()`.
-- Rename `webhook_configure()` to `create_webhook()`.
-- Change `delete_webhook()` to receive a webhook id param.
-- Add `id`, `created_at` and `created_by` attributes to the Webhook model.
-- Add `archive_aoi()`.
-- Add `restore_aoi()`.
-- Add `archived_at` and `archived_by` attributes to the AOI model.
-- Add `archive_subscription()`.
-- Add `restore_subscription()`.
-- Add `archived_at` and `archived_by` attributes to the Subscription model.
+### Webhook improvements
+- Added `list_webhooks()`.
+- Added `get_webhook()`.
+- Renamed `webhook_configure()` to `create_webhook()`.
+- Changed `delete_webhook()` to receive an `id` param.
+
+### Archive/restore AOI
+- Added `archive_aoi()`.
+- Added `restore_aoi()`.
+- Changed `list_aois()` to accept an optional `archived` param.
+
+### Archive/restore subscription
+- Added `archive_subscription()`.
+- Added `restore_subscription()` within the grace period.
+- Changed `list_subscriptions()` to accept an optional `archived` param.
 
 ## 0.1.7 - 2026-01-13
 
