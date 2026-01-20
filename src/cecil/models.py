@@ -13,6 +13,8 @@ class AOI(BaseModel):
     hectares: float
     created_at: datetime.datetime
     created_by: str
+    archived_at: Optional[datetime.datetime] = None
+    archived_by: Optional[str] = None
 
 
 class AOICreate(BaseModel):
@@ -125,6 +127,8 @@ class Subscription(BaseModel):
     external_ref: str
     created_at: datetime.datetime
     created_by: str
+    archived_at: Optional[datetime.datetime] = None
+    archived_by: Optional[str] = None
 
 
 class SubscriptionCreate(BaseModel):

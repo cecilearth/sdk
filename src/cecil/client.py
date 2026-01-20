@@ -1,6 +1,6 @@
 import os
 import requests
-from typing import Dict, List
+from typing import Dict, List, Any
 
 import pandas as pd
 import xarray
@@ -56,17 +56,33 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def list_aois(self) -> List[AOI]:
+    def list_aois(self, archived: bool = False) -> List[AOI]:
         try:
-            res = self._get(url="/v0/aois")
+            res = self._get(url="/v0/aois", params={"archived": archived})
             return [AOI(**record) for record in res["records"]]
 
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def list_subscriptions(self) -> List[Subscription]:
+    def archive_aoi(self, id: str):
         try:
-            res = self._get(url="/v0/subscriptions")
+            self._post(url=f"/v0/aois/{id}/archive")
+            return
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def restore_aoi(self, id: str):
+        try:
+            self._post(url=f"/v0/aois/{id}/restore")
+            return
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def list_subscriptions(self, archived: bool = False) -> List[Subscription]:
+        try:
+            res = self._get(url="/v0/subscriptions", params={"archived": archived})
             return [Subscription(**record) for record in res["records"]]
 
         except Exception as e:
@@ -91,6 +107,22 @@ class Client:
         try:
             res = self._get(url=f"/v0/subscriptions/{id}")
             return Subscription(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def archive_subscription(self, id: str):
+        try:
+            self._post(url=f"/v0/subscriptions/{id}/archive")
+            return
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def restore_subscription(self, id: str):
+        try:
+            self._post(url=f"/v0/subscriptions/{id}/restore")
+            return
 
         except Exception as e:
             raise e.with_traceback(None) from None
@@ -224,7 +256,7 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def _request(self, method: str, url: str, skip_auth=False, **kwargs) -> Dict|str:
+    def _request(self, method: str, url: str, skip_auth=False, **kwargs) -> Dict | str:
 
         if not skip_auth:
             self._set_auth()
@@ -250,14 +282,16 @@ class Client:
         except ValueError:
             return r.text
 
-    def _get(self, url: str, **kwargs) -> Dict:
-        return self._request(method="get", url=url, **kwargs)
+    def _get(self, url: str, params: Dict[str, Any] = None, **kwargs) -> Dict:
+        return self._request(method="get", url=url, params=params, **kwargs)
 
-    def _post(self, url: str, model: BaseModel, skip_auth=False, **kwargs) -> Dict:
+    def _post(
+        self, url: str, model: BaseModel = None, skip_auth=False, **kwargs
+    ) -> Dict:
         return self._request(
             method="post",
             url=url,
-            json=model.model_dump(by_alias=True),
+            json=model.model_dump(by_alias=True) if model else None,
             skip_auth=skip_auth,
             **kwargs,
         )
