@@ -27,6 +27,7 @@ from .models import (
     WebhookConfigure,
 )
 from .version import __version__
+from .dataframe import load_dataframe
 from .xarray import load_xarray
 
 
@@ -142,13 +143,7 @@ class Client:
             res = SubscriptionParquetFiles(
                 **self._get(url=f"/v0/subscriptions/{subscription_id}/parquet-files")
             )
-
-            if not res.files:
-                return pd.DataFrame()
-
-            return pd.concat((pd.read_parquet(f) for f in res.files)).reset_index(
-                drop=True
-            )
+            return load_dataframe(res)
 
         except Exception as e:
             raise e.with_traceback(None) from None
