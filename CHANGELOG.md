@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.9 - 2026-01-27
+
+- Changed `load_dataframe()` to retry when failing to load files from bucket.
+
 ## 0.1.8 - 2026-01-20
 
 ### Webhook improvements
