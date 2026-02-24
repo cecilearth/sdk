@@ -36,6 +36,13 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
+    def archive_subscription(self, id: str) -> None:
+        try:
+            self._post(url=f"/v0/subscriptions/{id}/archive")
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
     def create_aoi(self, geometry: Dict, external_ref: str = "") -> AOI:
         try:
             res = self._post(
@@ -43,91 +50,6 @@ class Client:
                 json=dict(geometry=geometry, external_ref=external_ref),
             )
             return AOI(**res)
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def get_aoi(self, id: str) -> AOI:
-        try:
-            res = self._get(url=f"/v0/aois/{id}")
-            return AOI(**res)
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def list_aois(self, archived: bool = False) -> List[AOI]:
-        try:
-            res = self._get(url="/v0/aois", params={"archived": archived})
-            return [AOI(**record) for record in res["records"]]
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def restore_aoi(self, id: str) -> None:
-        try:
-            self._post(url=f"/v0/aois/{id}/restore")
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def recover_api_key(self, email: str) -> str:
-        try:
-            return self._post(
-                url="/v0/api-key/recover",
-                json=dict(email=email),
-                skip_auth=True,
-            )
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def rotate_api_key(self) -> str:
-        try:
-            return self._post(url=f"/v0/api-key/rotate")
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def get_dataset(self, id) -> Dataset:
-        try:
-            res = self._get(url=f"/v0/datasets/{id}")
-            return Dataset(**res)
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def list_datasets(self) -> List[Dataset]:
-        try:
-            res = self._get(url="/v0/datasets")
-            return [Dataset(**record) for record in res["records"]]
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def get_settings(self) -> Settings:
-        try:
-            res = self._get(url="/v0/settings")
-            return Settings(**res)
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def update_settings(
-        self,
-        *,
-        monthly_subscription_limit,
-    ) -> None:
-        try:
-            self._post(
-                url="/v0/settings",
-                json=dict(monthly_subscription_limit=monthly_subscription_limit),
-            )
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def archive_subscription(self, id: str) -> None:
-        try:
-            self._post(url=f"/v0/subscriptions/{id}/archive")
 
         except Exception as e:
             raise e.with_traceback(None) from None
@@ -147,29 +69,6 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def get_subscription(self, id: str) -> Subscription:
-        try:
-            res = self._get(url=f"/v0/subscriptions/{id}")
-            return Subscription(**res)
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def list_subscriptions(self, archived: bool = False) -> List[Subscription]:
-        try:
-            res = self._get(url="/v0/subscriptions", params={"archived": archived})
-            return [Subscription(**record) for record in res["records"]]
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def restore_subscription(self, id: str) -> None:
-        try:
-            self._post(url=f"/v0/subscriptions/{id}/restore")
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
     def create_user(self, first_name: str, last_name: str, email: str) -> User:
         try:
             res = self._post(
@@ -181,22 +80,6 @@ class Client:
                 ),
             )
             return User(**res)
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def get_user(self, id: str) -> User:
-        try:
-            res = self._get(url=f"/v0/users/{id}")
-            return User(**res)
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def list_users(self) -> List[User]:
-        try:
-            res = self._get(url="/v0/users")
-            return [User(**record) for record in res["records"]]
 
         except Exception as e:
             raise e.with_traceback(None) from None
@@ -218,10 +101,81 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
+    def get_aoi(self, id: str) -> AOI:
+        try:
+            res = self._get(url=f"/v0/aois/{id}")
+            return AOI(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def get_dataset(self, id) -> Dataset:
+        try:
+            res = self._get(url=f"/v0/datasets/{id}")
+            return Dataset(**res)
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def get_settings(self) -> Settings:
+        try:
+            res = self._get(url="/v0/settings")
+            return Settings(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def get_subscription(self, id: str) -> Subscription:
+        try:
+            res = self._get(url=f"/v0/subscriptions/{id}")
+            return Subscription(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def get_user(self, id: str) -> User:
+        try:
+            res = self._get(url=f"/v0/users/{id}")
+            return User(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
     def get_webhook(self, id: str) -> Webhook:
         try:
             res = self._get(url=f"/v0/webhooks/{id}")
             return Webhook(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def list_aois(self, archived: bool = False) -> List[AOI]:
+        try:
+            res = self._get(url="/v0/aois", params={"archived": archived})
+            return [AOI(**record) for record in res["records"]]
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def list_datasets(self) -> List[Dataset]:
+        try:
+            res = self._get(url="/v0/datasets")
+            return [Dataset(**record) for record in res["records"]]
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def list_subscriptions(self, archived: bool = False) -> List[Subscription]:
+        try:
+            res = self._get(url="/v0/subscriptions", params={"archived": archived})
+            return [Subscription(**record) for record in res["records"]]
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def list_users(self) -> List[User]:
+        try:
+            res = self._get(url="/v0/users")
+            return [User(**record) for record in res["records"]]
 
         except Exception as e:
             raise e.with_traceback(None) from None
@@ -250,6 +204,52 @@ class Client:
                 **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
             )
             return load_xarray(res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def recover_api_key(self, email: str) -> str:
+        try:
+            return self._post(
+                url="/v0/api-key/recover",
+                json=dict(email=email),
+                skip_auth=True,
+            )
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def restore_aoi(self, id: str) -> None:
+        try:
+            self._post(url=f"/v0/aois/{id}/restore")
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def restore_subscription(self, id: str) -> None:
+        try:
+            self._post(url=f"/v0/subscriptions/{id}/restore")
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def rotate_api_key(self) -> str:
+        try:
+            return self._post(url=f"/v0/api-key/rotate")
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def update_settings(
+        self,
+        *,
+        monthly_subscription_limit,
+    ) -> None:
+        try:
+            self._post(
+                url="/v0/settings",
+                json=dict(monthly_subscription_limit=monthly_subscription_limit),
+            )
 
         except Exception as e:
             raise e.with_traceback(None) from None
