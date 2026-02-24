@@ -43,7 +43,7 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def create_aoi(self, geometry: Dict, external_ref: str = "") -> AOI:
+    def create_aoi(self, geometry: Dict, external_ref: str = None) -> AOI:
         try:
             res = self._post(
                 url="/v0/aois",
@@ -55,7 +55,7 @@ class Client:
             raise e.with_traceback(None) from None
 
     def create_subscription(
-        self, aoi_id: str, dataset_id: str, external_ref: str = ""
+        self, aoi_id: str, dataset_id: str, external_ref: str = None
     ) -> Subscription:
         try:
             res = self._post(
