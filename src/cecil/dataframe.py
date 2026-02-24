@@ -1,7 +1,8 @@
-import pandas as pd
 import time
 
-from .models import SubscriptionParquetFiles
+import pandas as pd
+
+from .models.subscription import SubscriptionParquetFiles
 
 
 def load_dataframe(res: SubscriptionParquetFiles) -> pd.DataFrame:

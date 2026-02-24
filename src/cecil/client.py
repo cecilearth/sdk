@@ -1,33 +1,24 @@
 import os
-import requests
-from typing import Dict, List, Any
+from typing import Dict, List
 
 import pandas as pd
+import requests
+import requests.auth
 import xarray
-from pydantic import BaseModel
-from requests import auth
 
-from .errors import HTTPError, SDKError
-from .models import (
-    AOI,
-    AOICreate,
-    Dataset,
-    OrganisationSettings,
-    RecoverAPIKey,
-    RecoverAPIKeyRequest,
-    RotateAPIKey,
-    RotateAPIKeyRequest,
-    User,
-    UserCreate,
-    SubscriptionParquetFiles,
-    SubscriptionListFiles,
-    Subscription,
-    SubscriptionCreate,
-    Webhook,
-    WebhookConfigure,
-)
-from .version import __version__
 from .dataframe import load_dataframe
+from .errors import HTTPError, SDKError
+from .models.aoi import AOI
+from .models.dataset import Dataset
+from .models.settings import Settings
+from .models.subscription import (
+    Subscription,
+    SubscriptionListFiles,
+    SubscriptionParquetFiles,
+)
+from .models.user import User
+from .models.webhook import Webhook
+from .version import __version__
 from .xarray import load_xarray
 
 
@@ -38,11 +29,18 @@ class Client:
             "https://api.cecil.earth" if env is None else f"https://{env}.cecil.earth"
         )
 
+    def archive_aoi(self, id: str) -> None:
+        try:
+            self._post(url=f"/v0/aois/{id}/archive")
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
     def create_aoi(self, geometry: Dict, external_ref: str = "") -> AOI:
         try:
             res = self._post(
                 url="/v0/aois",
-                model=AOICreate(geometry=geometry, external_ref=external_ref),
+                json=dict(geometry=geometry, external_ref=external_ref),
             )
             return AOI(**res)
 
@@ -65,26 +63,71 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def archive_aoi(self, id: str):
-        try:
-            self._post(url=f"/v0/aois/{id}/archive")
-            return
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def restore_aoi(self, id: str):
+    def restore_aoi(self, id: str) -> None:
         try:
             self._post(url=f"/v0/aois/{id}/restore")
-            return
 
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def list_subscriptions(self, archived: bool = False) -> List[Subscription]:
+    def recover_api_key(self, email: str) -> str:
         try:
-            res = self._get(url="/v0/subscriptions", params={"archived": archived})
-            return [Subscription(**record) for record in res["records"]]
+            return self._post(
+                url="/v0/api-key/recover",
+                json=dict(email=email),
+                skip_auth=True,
+            )
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def rotate_api_key(self) -> str:
+        try:
+            return self._post(url=f"/v0/api-key/rotate")
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def get_dataset(self, id) -> Dataset:
+        try:
+            res = self._get(url=f"/v0/datasets/{id}")
+            return Dataset(**res)
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def list_datasets(self) -> List[Dataset]:
+        try:
+            res = self._get(url="/v0/datasets")
+            return [Dataset(**record) for record in res["records"]]
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def get_settings(self) -> Settings:
+        try:
+            res = self._get(url="/v0/settings")
+            return Settings(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def update_settings(
+        self,
+        *,
+        monthly_subscription_limit,
+    ) -> None:
+        try:
+            self._post(
+                url="/v0/settings",
+                json=dict(monthly_subscription_limit=monthly_subscription_limit),
+            )
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def archive_subscription(self, id: str) -> None:
+        try:
+            self._post(url=f"/v0/subscriptions/{id}/archive")
 
         except Exception as e:
             raise e.with_traceback(None) from None
@@ -95,7 +138,7 @@ class Client:
         try:
             res = self._post(
                 url="/v0/subscriptions",
-                model=SubscriptionCreate(
+                json=dict(
                     aoi_id=aoi_id, dataset_id=dataset_id, external_ref=external_ref
                 ),
             )
@@ -112,58 +155,17 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def archive_subscription(self, id: str):
+    def list_subscriptions(self, archived: bool = False) -> List[Subscription]:
         try:
-            self._post(url=f"/v0/subscriptions/{id}/archive")
-            return
+            res = self._get(url="/v0/subscriptions", params={"archived": archived})
+            return [Subscription(**record) for record in res["records"]]
 
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def restore_subscription(self, id: str):
+    def restore_subscription(self, id: str) -> None:
         try:
             self._post(url=f"/v0/subscriptions/{id}/restore")
-            return
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def load_xarray(self, subscription_id: str) -> xarray.Dataset:
-        try:
-            res = SubscriptionListFiles(
-                **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
-            )
-            return load_xarray(res)
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def load_dataframe(self, subscription_id: str) -> pd.DataFrame:
-        try:
-            res = SubscriptionParquetFiles(
-                **self._get(url=f"/v0/subscriptions/{subscription_id}/parquet-files")
-            )
-            return load_dataframe(res)
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def recover_api_key(self, email: str) -> RecoverAPIKey:
-        try:
-            res = self._post(
-                url="/v0/api-key/recover",
-                model=RecoverAPIKeyRequest(email=email),
-                skip_auth=True,
-            )
-            return RecoverAPIKey(**res)
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def rotate_api_key(self) -> RotateAPIKey:
-        try:
-            res = self._post(url=f"/v0/api-key/rotate", model=RotateAPIKeyRequest())
-            return RotateAPIKey(**res)
 
         except Exception as e:
             raise e.with_traceback(None) from None
@@ -172,7 +174,7 @@ class Client:
         try:
             res = self._post(
                 url="/v0/users",
-                model=UserCreate(
+                json=dict(
                     first_name=first_name,
                     last_name=last_name,
                     email=email,
@@ -199,43 +201,18 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def get_organisation_settings(self) -> OrganisationSettings:
-        try:
-            res = self._get(url="/v0/organisation/settings")
-            return OrganisationSettings(**res)
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def update_organisation_settings(
-        self,
-        *,
-        monthly_subscription_limit,
-    ) -> OrganisationSettings:
-        try:
-            res = self._post(
-                url="/v0/organisation/settings",
-                model=OrganisationSettings(
-                    monthly_subscription_limit=monthly_subscription_limit,
-                ),
-            )
-            return OrganisationSettings(**res)
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
     def create_webhook(self, url: str, secret: str = None) -> Webhook:
         try:
             res = self._post(
                 url="/v0/webhooks",
-                model=WebhookConfigure(url=url, secret=secret),
+                json=dict(url=url, secret=secret),
             )
             return Webhook(**res)
 
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def delete_webhook(self, id: str):
+    def delete_webhook(self, id: str) -> None:
         try:
             self._delete(url=f"/v0/webhooks/{id}")
         except Exception as e:
@@ -257,13 +234,44 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def list_datasets(self) -> List[Dataset]:
+    def load_dataframe(self, subscription_id: str) -> pd.DataFrame:
         try:
-            res = self._get(url="/v0/datasets")
-            return [Dataset(**record) for record in res["records"]]
+            res = SubscriptionParquetFiles(
+                **self._get(url=f"/v0/subscriptions/{subscription_id}/parquet-files")
+            )
+            return load_dataframe(res)
 
         except Exception as e:
             raise e.with_traceback(None) from None
+
+    def load_xarray(self, subscription_id: str) -> xarray.Dataset:
+        try:
+            res = SubscriptionListFiles(
+                **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
+            )
+            return load_xarray(res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def _delete(self, url: str, skip_auth=False, **kwargs) -> Dict | str:
+        return self._request(
+            method="delete",
+            url=url,
+            skip_auth=skip_auth,
+            **kwargs,
+        )
+
+    def _get(self, url: str, **kwargs) -> Dict | str:
+        return self._request(method="get", url=url, **kwargs)
+
+    def _post(self, url: str, skip_auth=False, **kwargs) -> Dict | str:
+        return self._request(
+            method="post",
+            url=url,
+            skip_auth=skip_auth,
+            **kwargs,
+        )
 
     def _request(self, method: str, url: str, skip_auth=False, **kwargs) -> Dict | str:
 
@@ -291,31 +299,9 @@ class Client:
         except ValueError:
             return r.text
 
-    def _get(self, url: str, params: Dict[str, Any] = None, **kwargs) -> Dict:
-        return self._request(method="get", url=url, params=params, **kwargs)
-
-    def _post(
-        self, url: str, model: BaseModel = None, skip_auth=False, **kwargs
-    ) -> Dict:
-        return self._request(
-            method="post",
-            url=url,
-            json=model.model_dump(by_alias=True) if model else None,
-            skip_auth=skip_auth,
-            **kwargs,
-        )
-
-    def _delete(self, url: str, skip_auth=False, **kwargs) -> Dict:
-        return self._request(
-            method="delete",
-            url=url,
-            skip_auth=skip_auth,
-            **kwargs,
-        )
-
     def _set_auth(self) -> None:
         try:
             api_key = os.environ["CECIL_API_KEY"]
-            self._api_auth = auth.HTTPBasicAuth(username=api_key, password="")
+            self._api_auth = requests.auth.HTTPBasicAuth(username=api_key, password="")
         except KeyError:
             raise SDKError("Environment variable CECIL_API_KEY not set")

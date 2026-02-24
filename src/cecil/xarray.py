@@ -1,15 +1,16 @@
+import datetime
 import re
-from datetime import datetime
 
 import boto3
 import dask
+import dask.array
+import numpy as np
 import rasterio
 import rasterio.session
 import rioxarray
 import xarray
-import numpy as np
 
-from .models import SubscriptionListFiles
+from .models.subscription import SubscriptionListFiles
 
 
 def load_xarray(res: SubscriptionListFiles) -> xarray.Dataset:
@@ -80,7 +81,7 @@ def load_xarray(res: SubscriptionListFiles) -> xarray.Dataset:
 
             # Dataset with time dimension
             if timestamp_str != "0000/00/00/00/00/00":
-                t = datetime.strptime(timestamp_str, "%Y/%m/%d/%H/%M/%S")
+                t = datetime.datetime.strptime(timestamp_str, "%Y/%m/%d/%H/%M/%S")
                 band_da = band_da.expand_dims("time")
                 band_da = band_da.assign_coords(time=[t])
 
