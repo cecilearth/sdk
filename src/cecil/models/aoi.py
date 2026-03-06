@@ -6,7 +6,7 @@ from .base import Base
 
 class AOI(Base):
     id: str
-    external_ref: Optional[str]
+    external_ref: Optional[str] = None
     geometry: Optional[Dict] = None
     hectares: float
     created_at: datetime.datetime

@@ -10,10 +10,10 @@ import rasterio.session
 import rioxarray
 import xarray
 
-from .models.subscription import SubscriptionListFiles
+from .models.subscription import SubscriptionTIFF
 
 
-def load_xarray(res: SubscriptionListFiles) -> xarray.Dataset:
+def load_xarray(res: SubscriptionTIFF) -> xarray.Dataset:
     session = boto3.session.Session(
         aws_access_key_id=res.credentials.access_key_id,
         aws_secret_access_key=res.credentials.secret_access_key,

@@ -2,10 +2,10 @@ import time
 
 import pandas as pd
 
-from .models.subscription import SubscriptionParquetFiles
+from .models.subscription import SubscriptionParquet
 
 
-def load_dataframe(res: SubscriptionParquetFiles) -> pd.DataFrame:
+def load_dataframe(res: SubscriptionParquet) -> pd.DataFrame:
     if not res.files:
         return pd.DataFrame()
 

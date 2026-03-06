@@ -4,4 +4,4 @@ from .base import Base
 
 
 class Settings(Base):
-    monthly_subscription_limit: Optional[int]
+    monthly_subscription_limit: int

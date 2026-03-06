@@ -8,14 +8,18 @@ class Subscription(Base):
     id: str
     aoi_id: str
     dataset_id: str
-    external_ref: Optional[str]
+    external_ref: Optional[str] = None
     created_at: datetime.datetime
     created_by: str
     archived_at: Optional[datetime.datetime] = None
     archived_by: Optional[str] = None
 
 
-class SubscriptionListFiles(Base):
+class SubscriptionParquet(Base):
+    files: List[str]
+
+
+class SubscriptionTIFF(Base):
     provider_name: str
     dataset_id: str
     dataset_name: str
@@ -23,12 +27,8 @@ class SubscriptionListFiles(Base):
     subscription_id: str
     bucket: "Bucket"
     credentials: "BucketCredentials"
-    allowed_actions: List
+    allowed_actions: List[str]
     file_mapping: Dict[str, "File"]
-
-
-class SubscriptionParquetFiles(Base):
-    files: List[str]
 
 
 class Bucket(Base):

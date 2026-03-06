@@ -13,8 +13,8 @@ from .models.dataset import Dataset
 from .models.settings import Settings
 from .models.subscription import (
     Subscription,
-    SubscriptionListFiles,
-    SubscriptionParquetFiles,
+    SubscriptionParquet,
+    SubscriptionTIFF,
 )
 from .models.user import User
 from .models.webhook import Webhook
@@ -190,8 +190,8 @@ class Client:
 
     def load_dataframe(self, subscription_id: str) -> pd.DataFrame:
         try:
-            res = SubscriptionParquetFiles(
-                **self._get(url=f"/v0/subscriptions/{subscription_id}/parquet-files")
+            res = SubscriptionParquet(
+                **self._get(url=f"/v0/subscriptions/{subscription_id}/files/parquet")
             )
             return load_dataframe(res)
 
@@ -200,7 +200,7 @@ class Client:
 
     def load_xarray(self, subscription_id: str) -> xarray.Dataset:
         try:
-            res = SubscriptionListFiles(
+            res = SubscriptionTIFF(
                 **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
             )
             return load_xarray(res)
