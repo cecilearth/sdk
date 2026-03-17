@@ -25,18 +25,18 @@ class SubscriptionTIFF(Base):
     dataset_name: str
     aoi_id: str
     subscription_id: str
-    bucket: "Bucket"
-    credentials: "BucketCredentials"
+    s3_location: "S3Location"
+    credentials: "S3BucketCredentials"
     allowed_actions: List[str]
     file_mapping: Dict[str, "File"]
 
 
-class Bucket(Base):
-    name: str
+class S3Location(Base):
+    bucket_name: str
     prefix: str
 
 
-class BucketCredentials(Base):
+class S3BucketCredentials(Base):
     access_key_id: str
     secret_access_key: str
     session_token: str

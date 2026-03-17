@@ -21,7 +21,7 @@ def load_xarray(res: SubscriptionTIFF) -> xarray.Dataset:
         region_name=res.credentials.region,
     )
 
-    keys = _list_keys(session, res.bucket.name, res.bucket.prefix)
+    keys = _list_keys(session, res.s3_location.bucket_name, res.s3_location.prefix)
 
     if not keys:
         return xarray.Dataset()
@@ -33,7 +33,7 @@ def load_xarray(res: SubscriptionTIFF) -> xarray.Dataset:
         session=rasterio.session.AWSSession(session),
     ):
         first_file = rioxarray.open_rasterio(
-            f"s3://{res.bucket.name}/{keys[0]}", chunks="auto"
+            f"s3://{res.s3_location.bucket_name}/{keys[0]}", chunks="auto"
         )
 
     for key in keys:
@@ -48,7 +48,9 @@ def load_xarray(res: SubscriptionTIFF) -> xarray.Dataset:
         for band_info in file_info.bands:
             lazy_array = dask.array.from_delayed(
                 dask.delayed(_load_file)(
-                    session, f"s3://{res.bucket.name}/{key}", band_info.number
+                    session,
+                    f"s3://{res.s3_location.bucket_name}/{key}",
+                    band_info.number,
                 ),
                 shape=(
                     first_file.rio.height,
