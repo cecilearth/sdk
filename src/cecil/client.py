@@ -15,11 +15,13 @@ from .models.subscription import (
     Subscription,
     SubscriptionParquet,
     SubscriptionTIFF,
+    SubscriptionFormat,
+    SubscriptionZarr,
 )
 from .models.user import User
 from .models.webhook import Webhook
 from .version import __version__
-from .xarray import load_xarray
+from .xarray import load_xarray_from_zarr, load_xarray_from_tiff
 
 
 class Client:
@@ -203,7 +205,33 @@ class Client:
             res = SubscriptionTIFF(
                 **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
             )
-            return load_xarray(res)
+            return load_xarray_from_tiff(res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def _load_xarray_v2(self, subscription_id: str) -> xarray.Dataset:
+        try:
+            res = SubscriptionFormat(
+                **self._get(
+                    url=f"/v0/dataset-format",
+                    params={"subscription_id": subscription_id},
+                )
+            )
+
+            if res.format == "zarr":
+                zarr_files = SubscriptionZarr(
+                    **self._get(url=f"/v0/subscriptions/{subscription_id}/files/zarr")
+                )
+                return load_xarray_from_zarr(zarr_files)
+
+            if res.format == "tiff":
+                tiff_files = SubscriptionTIFF(
+                    **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
+                )
+                return load_xarray_from_tiff(tiff_files)
+
+            raise SDKError("Unexpected dataset format")
 
         except Exception as e:
             raise e.with_traceback(None) from None

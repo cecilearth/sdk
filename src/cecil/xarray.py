@@ -1,19 +1,108 @@
 import datetime
 import re
 
+import affine
 import boto3
 import dask
 import dask.array
+import fsspec
 import numpy as np
 import rasterio
+import rasterio.features
 import rasterio.session
+import rasterio.warp
+import rasterio.windows
 import rioxarray
 import xarray
 
-from .models.subscription import SubscriptionTIFF
+from .models.subscription import (
+    SubscriptionTIFF,
+    SubscriptionZarr,
+)
 
 
-def load_xarray(res: SubscriptionTIFF) -> xarray.Dataset:
+def load_xarray_from_zarr(res: SubscriptionZarr) -> xarray.Dataset:
+    # MODIFIED to get zarr from R2
+    fs = fsspec.filesystem(
+        "s3",
+        key=res.credentials.access_key_id,
+        secret=res.credentials.secret_access_key,
+        token=res.credentials.session_token,
+        client_kwargs={
+            "endpoint_url": res.credentials.endpoint_url,
+        },
+    )
+    mapper = fs.get_mapper(f"datasets/{res.bucket.prefix}")
+
+    ds = xarray.open_zarr(mapper, consolidated=False, mask_and_scale=False)
+    ds = ds.set_coords("spatial_ref")
+
+    # MODIFIED to get bounds from aoi geometry
+    geographic_bounds = rasterio.features.bounds(res.geometry)
+
+    # MODIFIED it gets the shape of the first variable, compatible to current xarray code on SDK
+    first_var = ds[list(ds.data_vars)[0]]
+    # MODIFIED the zarr might not have the third dimension (time)
+    *_, height, width = first_var.shape
+    crs = rasterio.crs.CRS.from_wkt(ds.spatial_ref.crs_wkt)
+
+    transform = affine.Affine.from_gdal(
+        *[float(item) for item in ds.spatial_ref.GeoTransform.split(" ")]
+    )
+
+    bounds = rasterio.warp.transform_bounds(
+        rasterio.crs.CRS.from_string("EPSG:4326"), crs, *geographic_bounds
+    )
+    window = rasterio.windows.from_bounds(*bounds, transform)
+
+    col_off = max(0, int(np.floor(window.col_off)))
+    row_off = max(0, int(np.floor(window.row_off)))
+    width = max(0, int(np.ceil(window.width)))
+    height = max(0, int(np.ceil(window.height)))
+
+    width = min(int(np.ceil(col_off + width)), ds.sizes["x"]) - col_off
+    height = min(int(np.ceil(row_off + height)), ds.sizes["y"]) - row_off
+
+    row_slice, col_slice = rasterio.windows.Window(
+        col_off, row_off, width, height
+    ).toslices()
+
+    subscription_ds = ds.isel(y=row_slice, x=col_slice)
+    subscription_ds = subscription_ds.assign_attrs(
+        subscription_id=res.subscription_id,
+        aoi_id=res.aoi_id,
+    )
+    subscription_ds = subscription_ds[sorted(subscription_ds.data_vars)]
+
+    mask_height, mask_width = (
+        row_slice.stop - row_slice.start,
+        col_slice.stop - col_slice.start,
+    )
+    window_transform = rasterio.transform.from_bounds(*bounds, mask_width, mask_height)
+    include_mask = xarray.DataArray(
+        data=rasterio.features.geometry_mask(
+            [res.geometry], (mask_height, mask_width), window_transform, invert=True
+        ),
+        dims=("y", "x"),
+    )
+
+    subscription_ds.spatial_ref.attrs["GeoTransform"] = " ".join(
+        [str(item) for item in window_transform.to_gdal()]
+    )
+
+    # NEW CODE to get fill value for variables
+    # to be validated with multiple variables
+    for var_name in ds.data_vars:
+        var = subscription_ds[var_name]
+        fill_value = var.encoding.get("_FillValue") or var.attrs.get("_FillValue")
+        dtype = var.encoding.get("dtype", var.dtype)
+        nodata = np.array(fill_value, dtype=dtype).item()
+        subscription_ds[var_name] = var.where(include_mask, other=nodata)
+
+    return subscription_ds
+
+
+def load_xarray_from_tiff(res: SubscriptionTIFF) -> xarray.Dataset:
     session = boto3.session.Session(
         aws_access_key_id=res.credentials.access_key_id,
         aws_secret_access_key=res.credentials.secret_access_key,
@@ -21,7 +110,7 @@ def load_xarray(res: SubscriptionTIFF) -> xarray.Dataset:
         region_name=res.credentials.region,
     )
 
-    keys = _list_keys(session, res.s3_location.bucket_name, res.s3_location.prefix)
+    keys = _list_keys(session, res.bucket.name, res.bucket.prefix)
 
     if not keys:
         return xarray.Dataset()
@@ -33,7 +122,7 @@ def load_xarray(res: SubscriptionTIFF) -> xarray.Dataset:
         session=rasterio.session.AWSSession(session),
     ):
         first_file = rioxarray.open_rasterio(
-            f"s3://{res.s3_location.bucket_name}/{keys[0]}", chunks="auto"
+            f"s3://{res.bucket.name}/{keys[0]}", chunks="auto"
         )
 
     for key in keys:
@@ -49,7 +138,7 @@ def load_xarray(res: SubscriptionTIFF) -> xarray.Dataset:
             lazy_array = dask.array.from_delayed(
                 dask.delayed(_load_file)(
                     session,
-                    f"s3://{res.s3_location.bucket_name}/{key}",
+                    f"s3://{res.bucket.name}/{key}",
                     band_info.number,
                 ),
                 shape=(

@@ -15,6 +15,10 @@ class Subscription(Base):
     archived_by: Optional[str] = None
 
 
+class SubscriptionFormat(Base):
+    format: str
+
+
 class SubscriptionParquet(Base):
     files: List[str]
 
@@ -25,14 +29,23 @@ class SubscriptionTIFF(Base):
     dataset_name: str
     aoi_id: str
     subscription_id: str
-    s3_location: "S3Location"
+    bucket: "S3Bucket"
     credentials: "S3BucketCredentials"
     allowed_actions: List[str]
     file_mapping: Dict[str, "File"]
 
 
-class S3Location(Base):
-    bucket_name: str
+class SubscriptionZarr(Base):
+    dataset_id: str
+    aoi_id: str
+    subscription_id: str
+    geometry: Dict
+    bucket: "R2Bucket"
+    credentials: "R2BucketCredentials"
+
+
+class S3Bucket(Base):
+    name: str
     prefix: str
 
 
@@ -53,3 +66,15 @@ class Band(Base):
     name: str
     dtype: str
     nodata: Optional[float | int] = None
+
+
+class R2Bucket(Base):
+    name: str
+    prefix: str
+
+
+class R2BucketCredentials(Base):
+    access_key_id: str
+    secret_access_key: str
+    session_token: str
+    endpoint_url: str
