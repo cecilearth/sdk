@@ -29,7 +29,7 @@ def load_xarray_from_zarr(res: SubscriptionZarr) -> xarray.Dataset:
         secret=res.credentials.secret_access_key,
         token=res.credentials.session_token,
         client_kwargs={
-            "endpoint_url": res.credentials.endpoint_url,
+            "endpoint_url": res.credentials.endpoint,
         },
     )
     mapper = fs.get_mapper(f"datasets/{res.bucket.prefix}")

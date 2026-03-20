@@ -36,7 +36,6 @@ class SubscriptionTIFF(Base):
 
 
 class SubscriptionZarr(Base):
-    dataset_id: str
     aoi_id: str
     subscription_id: str
     geometry: Dict
@@ -77,4 +76,5 @@ class R2BucketCredentials(Base):
     access_key_id: str
     secret_access_key: str
     session_token: str
-    endpoint_url: str
+    endpoint: str
+    expiration: datetime.datetime
