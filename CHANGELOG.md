@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.10 - 2026-03-30
+
+- Added `get_dataset()`
+- Added all details to `Dataset`
+- Improved error handling
+- Made `external_ref` nullable for `Subscription` and `AOI`
+
 ## 0.1.9 - 2026-01-27
 
 - Changed `load_dataframe()` to retry when failing to load files from bucket.
@@ -7,17 +14,20 @@
 ## 0.1.8 - 2026-01-20
 
 ### Webhook improvements
+
 - Added `list_webhooks()`.
 - Added `get_webhook()`.
 - Renamed `webhook_configure()` to `create_webhook()`.
 - Changed `delete_webhook()` to receive an `id` param.
 
 ### Archive/restore AOI
+
 - Added `archive_aoi()`.
 - Added `restore_aoi()`.
 - Changed `list_aois()` to accept an optional `archived` param.
 
 ### Archive/restore subscription
+
 - Added `archive_subscription()`.
 - Added `restore_subscription()` within the grace period.
 - Changed `list_subscriptions()` to accept an optional `archived` param.
