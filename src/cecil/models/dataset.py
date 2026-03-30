@@ -11,36 +11,17 @@ class Dataset(Base):
     description: List[str]
     usage_notes: List[str]
     categories: List[str]
-    spatial_coverage: "SpatialCoverage"
-    spatial_resolution: Optional["SpatialResolution"] = None
-    temporal_coverage: "TemporalCoverage"
-    temporal_resolution: Optional["TemporalResolution"] = None
     licence: "Licence"
     version: "Version"
+    spatial_coverage: "SpatialCoverage"
+    spatial_resolution: "SpatialResolution"
+    temporal_coverage: "TemporalCoverage"
+    temporal_resolution: "TemporalResolution"
     constraints: "Constraints"
     variables: List["Variable"]
     pricing: "Pricing"
     resources: List["Resource"]
     providers: List["Provider"]
-
-
-class SpatialCoverage(Base):
-    nominal: str
-
-
-class SpatialResolution(Base):
-    x: Optional[float] = None
-    y: Optional[float] = None
-    units: Optional[str] = None
-    nominal: str
-
-
-class TemporalCoverage(Base):
-    nominal: str
-
-
-class TemporalResolution(Base):
-    nominal: str
 
 
 class Licence(Base):
@@ -50,6 +31,25 @@ class Licence(Base):
 class Version(Base):
     date: Optional[str] = None
     number: Optional[str] = None
+
+
+class SpatialCoverage(Base):
+    nominal: str
+
+
+class SpatialResolution(Base):
+    nominal: Optional[str] = None
+    units: Optional[str] = None
+    x: Optional[float] = None
+    y: Optional[float] = None
+
+
+class TemporalCoverage(Base):
+    nominal: str
+
+
+class TemporalResolution(Base):
+    nominal: Optional[str] = None
 
 
 class Constraints(Base):
@@ -64,7 +64,7 @@ class Constraints(Base):
 
 class Variable(Base):
     name: str
-    data_type: str
+    type: str
     no_data: Optional[str]
     units: Optional[str]
     description: List[str]
@@ -74,12 +74,16 @@ class Variable(Base):
 
 class Pricing(Base):
     description: List[str]
-    tiers: Optional[List["PricingTier"]]
+    tiers: Optional[List["Tier"]]
 
 
-class PricingTier(Base):
-    volume: str
+class Tier(Base):
+    volume: "Volume"
     price: "Price"
+
+
+class Volume(Base):
+    nominal: str
 
 
 class Price(Base):
