@@ -6,6 +6,8 @@
 - Added all details to `Dataset`
 - Improved error handling
 - Made `external_ref` nullable for `Subscription` and `AOI`
+- Renamed `get_organisation_settings()` to `get_settings()`
+- Renamed `update_organisation_settings()` to `update_settings()`
 
 ## 0.1.9 - 2026-01-27
 
