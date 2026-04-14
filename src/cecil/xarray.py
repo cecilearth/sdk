@@ -22,17 +22,16 @@ from .models.subscription import (
 
 
 def load_xarray_from_zarr(res: SubscriptionZarr) -> xarray.Dataset:
-    # MODIFIED to get zarr from R2
     fs = fsspec.filesystem(
         "s3",
         key=res.credentials.access_key_id,
         secret=res.credentials.secret_access_key,
         token=res.credentials.session_token,
         client_kwargs={
-            "endpoint_url": res.credentials.endpoint,
+            "region_name": res.credentials.region,
         },
     )
-    mapper = fs.get_mapper(f"datasets/{res.bucket.prefix}")
+    mapper = fs.get_mapper(f"{res.bucket.name}/{res.bucket.prefix}")
 
     ds = xarray.open_zarr(mapper, consolidated=False, mask_and_scale=False)
     ds = ds.set_coords("spatial_ref")
@@ -69,8 +68,11 @@ def load_xarray_from_zarr(res: SubscriptionZarr) -> xarray.Dataset:
 
     subscription_ds = ds.isel(y=row_slice, x=col_slice)
     subscription_ds = subscription_ds.assign_attrs(
-        subscription_id=res.subscription_id,
+        provider_name=res.provider_name,
+        dataset_name=res.dataset_name,
+        dataset_id=res.dataset_id,
         aoi_id=res.aoi_id,
+        subscription_id=res.subscription_id,
     )
     subscription_ds = subscription_ds[sorted(subscription_ds.data_vars)]
 

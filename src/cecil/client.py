@@ -13,15 +13,15 @@ from .models.dataset import Dataset
 from .models.settings import Settings
 from .models.subscription import (
     Subscription,
+    SubscriptionFormat,
     SubscriptionParquet,
     SubscriptionTIFF,
-    SubscriptionFormat,
     SubscriptionZarr,
 )
 from .models.user import User
 from .models.webhook import Webhook
 from .version import __version__
-from .xarray import load_xarray_from_zarr, load_xarray_from_tiff
+from .xarray import load_xarray_from_tiff, load_xarray_from_zarr
 
 
 class Client:

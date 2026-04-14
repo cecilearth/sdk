@@ -36,11 +36,15 @@ class SubscriptionTIFF(Base):
 
 
 class SubscriptionZarr(Base):
+    provider_name: str
+    dataset_id: str
+    dataset_name: str
     aoi_id: str
     subscription_id: str
     geometry: Dict
-    bucket: "R2Bucket"
-    credentials: "R2BucketCredentials"
+    bucket: "S3Bucket"
+    credentials: "S3BucketCredentials"
+    allowed_actions: List[str]
 
 
 class S3Bucket(Base):
