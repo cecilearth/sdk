@@ -31,7 +31,7 @@ def load_xarray_from_zarr(res: SubscriptionZarr) -> xarray.Dataset:
             "region_name": res.credentials.region,
         },
     )
-    mapper = fs.get_mapper(f"{res.bucket.name}/{res.bucket.prefix}")
+    mapper = fs.get_mapper(f"s3://{res.bucket.name}/{res.bucket.prefix}")
 
     ds = xarray.open_zarr(mapper, consolidated=False, mask_and_scale=False)
     ds = ds.set_coords("spatial_ref")
@@ -120,12 +120,8 @@ def load_xarray_from_tiff(res: SubscriptionTIFF) -> xarray.Dataset:
     timestamp_pattern = re.compile(r"\d{4}/\d{2}/\d{2}/\d{2}/\d{2}/\d{2}")
     data_vars = {}
 
-    with rasterio.env.Env(
-        session=rasterio.session.AWSSession(session),
-    ):
-        first_file = rioxarray.open_rasterio(
-            f"s3://{res.bucket.name}/{keys[0]}", chunks="auto"
-        )
+    with rasterio.env.Env(session=rasterio.session.AWSSession(session)):
+        first_file = rioxarray.open_rasterio(f"s3://{res.bucket.name}/{keys[0]}")
 
     for key in keys:
         filename = key.split("/")[-1]
