@@ -26,7 +26,7 @@ dependencies = [
     "rioxarray>=0.19.0,<1.0.0",
     "s3fs>=2026.3.0,<2027.0.0",
     "xarray>=2025.6.1",
-    "zarr>=3.0.0,<4.0.0",
+    "zarr>=2.18.3,<3.0.0",
 ]
 
 [tool.hatch.version]

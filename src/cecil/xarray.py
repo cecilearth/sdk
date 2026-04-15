@@ -31,7 +31,7 @@ def load_xarray_from_zarr(res: SubscriptionZarr) -> xarray.Dataset:
             "region_name": res.credentials.region,
         },
     )
-    mapper = fs.get_mapper(f"s3://{res.bucket.name}/{res.bucket.prefix}")
+    mapper = fs.get_mapper(f"{res.bucket.name}/{res.bucket.prefix}")
 
     ds = xarray.open_zarr(mapper, consolidated=False, mask_and_scale=False)
     ds = ds.set_coords("spatial_ref")
