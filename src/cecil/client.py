@@ -1,12 +1,12 @@
 import os
 from typing import Dict, List
 
-import pandas as pd
+import geopandas
 import requests
 import requests.auth
 import xarray
 
-from .dataframe import load_dataframe
+from .dataframe import load_dataframe, load_self_hosted_dataframe
 from .errors import HTTPError, SDKError
 from .models.aoi import AOI
 from .models.dataset import Dataset
@@ -17,6 +17,8 @@ from .models.subscription import (
     SubscriptionParquet,
     SubscriptionTIFF,
     SubscriptionZarr,
+    SubscriptionStorage,
+    SubscriptionSelfHostedParquet,
 )
 from .models.user import User
 from .models.webhook import Webhook
@@ -190,7 +192,7 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def load_dataframe(self, subscription_id: str) -> pd.DataFrame:
+    def load_dataframe(self, subscription_id: str) -> geopandas.GeoDataFrame:
         try:
             res = SubscriptionParquet(
                 **self._get(url=f"/v0/subscriptions/{subscription_id}/files/parquet")
@@ -199,6 +201,37 @@ class Client:
 
         except Exception as e:
             raise e.with_traceback(None) from None
+
+    def _load_dataframe_v2(self, subscription_id: str) -> geopandas.GeoDataFrame:
+        try:
+            res = SubscriptionStorage(
+                **self._get(
+                    url=f"/v0/dataset-storage",
+                    params={"subscription_id": subscription_id},
+                )
+            )
+
+            if res.storage == "ibat":
+                res_parquet = SubscriptionParquet(
+                    **self._get(
+                        url=f"/v0/subscriptions/{subscription_id}/files/parquet"
+                    )
+                )
+                return load_dataframe(res_parquet)
+
+            if res.storage == "self-hosted":
+                res_parquet = SubscriptionSelfHostedParquet(
+                    **self._get(
+                        url=f"/v0/subscriptions/{subscription_id}/files/parquet/self-hosted"
+                    )
+                )
+                return load_self_hosted_dataframe(res_parquet)
+
+            raise SDKError("Unexpected dataset storage")
+
+        except Exception as e:
+            raise e
+            # raise e.with_traceback(None) from None
 
     def load_xarray(self, subscription_id: str) -> xarray.Dataset:
         try:

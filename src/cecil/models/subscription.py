@@ -19,6 +19,19 @@ class SubscriptionFormat(Base):
     format: str
 
 
+class SubscriptionStorage(Base):
+    storage: str
+
+
+class SubscriptionSelfHostedParquet(Base):
+    aoi_id: str
+    subscription_id: str
+    geometry: Dict
+    bucket: "S3Bucket"
+    credentials: "S3BucketCredentials"
+    allowed_actions: List[str]
+
+
 class SubscriptionParquet(Base):
     files: List[str]
 
@@ -69,16 +82,3 @@ class Band(Base):
     name: str
     dtype: str
     nodata: Optional[float | int] = None
-
-
-class R2Bucket(Base):
-    name: str
-    prefix: str
-
-
-class R2BucketCredentials(Base):
-    access_key_id: str
-    secret_access_key: str
-    session_token: str
-    endpoint: str
-    expiration: datetime.datetime
