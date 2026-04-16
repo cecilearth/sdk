@@ -15,10 +15,10 @@ from .models.subscription import (
     Subscription,
     SubscriptionFormat,
     SubscriptionParquet,
+    SubscriptionSelfHostedParquet,
+    SubscriptionStorage,
     SubscriptionTIFF,
     SubscriptionZarr,
-    SubscriptionStorage,
-    SubscriptionSelfHostedParquet,
 )
 from .models.user import User
 from .models.webhook import Webhook

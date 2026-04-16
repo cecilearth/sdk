@@ -1,9 +1,12 @@
-import geopandas
 import json
+import time
+
+import geopandas
 import pandas
+import pyarrow.compute
+import pyarrow.dataset
 import pyarrow.fs
 import rasterio.features
-import time
 
 from .models.subscription import SubscriptionParquet, SubscriptionSelfHostedParquet
 
@@ -26,15 +29,21 @@ def load_self_hosted_dataframe(
     )
 
     prefix = f"{res.bucket.name}/{res.bucket.prefix}"
+    bbox_filter = (
+        (pyarrow.compute.field("bbox", "xmin") <= maxx)
+        & (pyarrow.compute.field("bbox", "xmax") >= minx)
+        & (pyarrow.compute.field("bbox", "ymin") <= maxy)
+        & (pyarrow.compute.field("bbox", "ymax") >= miny)
+    )
 
-    file_infos = pa_fs.get_file_info(pyarrow.fs.FileSelector(prefix, recursive=True))
+    file_infos = pa_fs.get_file_info(pyarrow.fs.FileSelector(prefix))
     parquet_files = [f.path for f in file_infos if f.path.endswith(".parquet")]
 
     gdfs = []
     for path in parquet_files:
-        _gdf = geopandas.read_parquet(
-            path, filesystem=pa_fs, bbox=(minx, miny, maxx, maxy)
-        )
+        dataset = pyarrow.dataset.dataset(path, filesystem=pa_fs)
+        table = dataset.to_table(filter=bbox_filter)
+        _gdf = geopandas.GeoDataFrame.from_arrow(table)
         gdfs.append(_gdf)
 
     gdf = pandas.concat(gdfs, ignore_index=True)
@@ -42,11 +51,11 @@ def load_self_hosted_dataframe(
 
     aoi_gdf = aoi_gdf.to_crs(gdf.crs)
 
-    gdf.geometry = gdf.geometry.make_valid()
-    gdf["subscription_id"] = res.subscription_id
-    gdf["aoi_id"] = res.aoi_id
+    gdf_clipped = gdf[gdf.intersects(aoi_gdf.union_all())].copy()
+    gdf_clipped.geometry = gdf_clipped.geometry.make_valid()
 
-    gdf_clipped = gdf[gdf.intersects(aoi_gdf.union_all())]
+    gdf_clipped["subscription_id"] = res.subscription_id
+    gdf_clipped["aoi_id"] = res.aoi_id
 
     return gdf_clipped
 
