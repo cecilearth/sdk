@@ -7,7 +7,7 @@ name = "cecil"
 dynamic = ["version"]
 description = 'Python SDK for Cecil Earth'
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -25,7 +25,7 @@ dependencies = [
     "rioxarray>=0.19.0,<1.0.0",
     "s3fs>=2026.3.0,<2027.0.0",
     "xarray>=2025.6.1",
-    "zarr>=2.18.3,<3.0.0",
+    "zarr>=3.1.6,<4.0.0",
 ]
 
 [tool.hatch.version]
