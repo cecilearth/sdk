@@ -54,8 +54,9 @@ def load_self_hosted_dataframe(
     gdf_clipped = gdf[gdf.intersects(aoi_gdf.union_all())].copy()
     gdf_clipped.geometry = gdf_clipped.geometry.make_valid()
 
-    gdf_clipped["subscription_id"] = res.subscription_id
-    gdf_clipped["aoi_id"] = res.aoi_id
+    gdf_clipped = gdf_clipped.drop(columns=["bbox"], errors="ignore")
+    gdf_clipped.insert(0, "aoi_id", res.aoi_id)
+    gdf_clipped.insert(0, "subscription_id", res.subscription_id)
 
     return gdf_clipped
 
