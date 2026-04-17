@@ -235,16 +235,6 @@ class Client:
 
     def load_xarray(self, subscription_id: str) -> xarray.Dataset:
         try:
-            res = SubscriptionTIFF(
-                **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
-            )
-            return load_xarray_from_tiff(res)
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def _load_xarray_v2(self, subscription_id: str) -> xarray.Dataset:
-        try:
             res = SubscriptionFormat(
                 **self._get(
                     url=f"/v0/dataset-format",
@@ -252,17 +242,17 @@ class Client:
                 )
             )
 
-            if res.format == "zarr":
-                zarr_files = SubscriptionZarr(
-                    **self._get(url=f"/v0/subscriptions/{subscription_id}/files/zarr")
-                )
-                return load_xarray_from_zarr(zarr_files)
-
             if res.format == "tiff":
                 tiff_files = SubscriptionTIFF(
                     **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
                 )
                 return load_xarray_from_tiff(tiff_files)
+
+            if res.format == "zarr":
+                zarr_files = SubscriptionZarr(
+                    **self._get(url=f"/v0/subscriptions/{subscription_id}/files/zarr")
+                )
+                return load_xarray_from_zarr(zarr_files)
 
             raise SDKError("Unexpected dataset format")
 
