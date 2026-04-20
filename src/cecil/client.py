@@ -194,16 +194,6 @@ class Client:
 
     def load_dataframe(self, subscription_id: str) -> geopandas.GeoDataFrame:
         try:
-            res = SubscriptionParquet(
-                **self._get(url=f"/v0/subscriptions/{subscription_id}/files/parquet")
-            )
-            return load_dataframe(res)
-
-        except Exception as e:
-            raise e.with_traceback(None) from None
-
-    def _load_dataframe_v2(self, subscription_id: str) -> geopandas.GeoDataFrame:
-        try:
             res = SubscriptionStorage(
                 **self._get(
                     url=f"/v0/dataset-storage",
