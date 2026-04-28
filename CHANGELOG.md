@@ -1,16 +1,17 @@
 # Changelog
 
 ## 0.1.11 - 2026-04-27
-- Returns GeoDataframe in `load_dataframe()`
+- Changed `load_dataframe()` to return GeoDataframe format.
+- Upgraded Python required version to `3.11`.
 
 ## 0.1.10 - 2026-03-30
 
-- Added `get_dataset()`
-- Added all details to `Dataset`
-- Improved error handling
-- Made `external_ref` nullable for `Subscription` and `AOI`
-- Renamed `get_organisation_settings()` to `get_settings()`
-- Renamed `update_organisation_settings()` to `update_settings()`
+- Added `get_dataset()`.
+- Added all details to `Dataset`.
+- Improved error handling.
+- Made `external_ref` nullable for `Subscription` and `AOI`.
+- Renamed `get_organisation_settings()` to `get_settings()`.
+- Renamed `update_organisation_settings()` to `update_settings()`.
 
 ## 0.1.9 - 2026-01-27
 
