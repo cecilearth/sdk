@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.11 - 2026-04-27
+- Returns GeoDataframe in `load_dataframe()`
+
 ## 0.1.10 - 2026-03-30
 
 - Added `get_dataset()`
