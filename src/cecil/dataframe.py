@@ -6,6 +6,7 @@ import pandas
 import pyarrow.compute
 import pyarrow.dataset
 import pyarrow.fs
+import pyarrow.parquet
 import rasterio.features
 
 from .models.subscription import SubscriptionParquet, SubscriptionSelfHostedParquet
@@ -14,12 +15,10 @@ from .models.subscription import SubscriptionParquet, SubscriptionSelfHostedParq
 def load_self_hosted_dataframe(
     res: SubscriptionSelfHostedParquet,
 ) -> geopandas.GeoDataFrame:
-    aoi_gdf = geopandas.GeoDataFrame.from_features(
+    aoi_gdf_default = geopandas.GeoDataFrame.from_features(
         [{"type": "Feature", "geometry": res.geometry, "properties": {}}],
         crs="EPSG:4326",
     )
-
-    minx, miny, maxx, maxy = rasterio.features.bounds(res.geometry)
 
     pa_fs = pyarrow.fs.S3FileSystem(
         access_key=res.credentials.access_key_id,
@@ -27,17 +26,21 @@ def load_self_hosted_dataframe(
         session_token=res.credentials.session_token,
         scheme="https",
     )
-
     prefix = f"{res.bucket.name}/{res.bucket.prefix}"
+
+    file_infos = pa_fs.get_file_info(pyarrow.fs.FileSelector(prefix))
+    parquet_files = [f.path for f in file_infos if f.path.endswith(".parquet")]
+
+    parquet_crs = _get_parquet_crs(parquet_files[0], filesystem=pa_fs)
+    aoi_gdf = aoi_gdf_default.to_crs(parquet_crs)
+
+    minx, miny, maxx, maxy = aoi_gdf.total_bounds
     bbox_filter = (
         (pyarrow.compute.field("bbox", "xmin") <= maxx)
         & (pyarrow.compute.field("bbox", "xmax") >= minx)
         & (pyarrow.compute.field("bbox", "ymin") <= maxy)
         & (pyarrow.compute.field("bbox", "ymax") >= miny)
     )
-
-    file_infos = pa_fs.get_file_info(pyarrow.fs.FileSelector(prefix))
-    parquet_files = [f.path for f in file_infos if f.path.endswith(".parquet")]
 
     gdfs = []
     for path in parquet_files:
@@ -47,11 +50,11 @@ def load_self_hosted_dataframe(
         gdfs.append(_gdf)
 
     gdf = pandas.concat(gdfs, ignore_index=True)
-    gdf = geopandas.GeoDataFrame(gdf, crs=gdfs[0].crs)
+    gdf = geopandas.GeoDataFrame(gdf, geometry="geometry", crs=parquet_crs)
 
-    aoi_gdf = aoi_gdf.to_crs(gdf.crs)
+    aoi_geom = aoi_gdf.union_all()
 
-    gdf_clipped = gdf[gdf.intersects(aoi_gdf.union_all())].copy()
+    gdf_clipped = gdf[gdf.intersects(aoi_geom)].copy()
     gdf_clipped.geometry = gdf_clipped.geometry.make_valid()
 
     gdf_clipped = gdf_clipped.drop(columns=["bbox"], errors="ignore")
@@ -74,6 +77,17 @@ def load_dataframe(res: SubscriptionParquet) -> geopandas.GeoDataFrame:
             for f in res.files
         )
     ).reset_index(drop=True)
+
+
+def _get_parquet_crs(path: str, filesystem: pyarrow.fs.FileSystem):
+    schema = pyarrow.parquet.read_schema(path, filesystem=filesystem)
+
+    geo_metadata = json.loads(schema.metadata[b"geo"].decode())
+
+    primary_column = geo_metadata.get("primary_column", "geometry")
+    crs = geo_metadata["columns"][primary_column]["crs"]
+
+    return crs
 
 
 def _parquet_to_geodataframe(file):
