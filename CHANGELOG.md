@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.12 - 2026-05-11
+- Improves `load_dataframe()` compatibility with more vector dataset types across different coordinate reference systems.
+
 ## 0.1.11 - 2026-04-27
 - Changed `load_dataframe()` to return GeoDataframe format.
 - Upgraded Python required version to `3.11`.
