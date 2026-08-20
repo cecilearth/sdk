@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.13 - 2026-08-20
+- Improved `load_dataframe()` performance for self-hosted datasets: the parquet footer is now read once per file instead of twice (up to ~3s faster per call on wide datasets).
+- Added optional `columns` parameter to `load_dataframe()` to load a subset of columns (self-hosted datasets only); `geometry` is always included.
+
 ## 0.1.12 - 2026-05-11
 - Improves `load_dataframe()` compatibility with more vector dataset types across different coordinate reference systems.
 
