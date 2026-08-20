@@ -104,7 +104,28 @@ def load_xarray_from_zarr(res: SubscriptionZarr) -> xarray.Dataset:
     return subscription_ds
 
 
-def load_xarray_from_tiff(res: SubscriptionTIFF) -> xarray.Dataset:
+def _band_has_scaling(band_info) -> bool:
+    return band_info.scale is not None or band_info.offset is not None
+
+
+def _decode_band(values, band_info):
+    """CF-style unpacking: mask nodata in the packed domain first, then
+    physical = packed * scale + offset, as float32 with NaN nodata."""
+    scale = band_info.scale if band_info.scale is not None else 1.0
+    offset = band_info.offset if band_info.offset is not None else 0.0
+
+    decoded = values.astype("float32")
+    if band_info.nodata is not None:
+        nodata = np.dtype(band_info.dtype).type(band_info.nodata)
+        decoded = np.where(values == nodata, np.nan, decoded)
+
+    return decoded * scale + offset
+
+
+def load_xarray_from_tiff(
+    res: SubscriptionTIFF,
+    mask_and_scale: bool = True,
+) -> xarray.Dataset:
     session = boto3.session.Session(
         aws_access_key_id=res.credentials.access_key_id,
         aws_secret_access_key=res.credentials.secret_access_key,
@@ -119,6 +140,7 @@ def load_xarray_from_tiff(res: SubscriptionTIFF) -> xarray.Dataset:
 
     timestamp_pattern = re.compile(r"\d{4}/\d{2}/\d{2}/\d{2}/\d{2}/\d{2}")
     data_vars = {}
+    encodings = {}
 
     with rasterio.env.Env(session=rasterio.session.AWSSession(session)):
         first_file = rioxarray.open_rasterio(f"s3://{res.bucket.name}/{keys[0]}")
@@ -133,20 +155,42 @@ def load_xarray_from_tiff(res: SubscriptionTIFF) -> xarray.Dataset:
         timestamp_str = timestamp_pattern.search(key).group()
 
         for band_info in file_info.bands:
+            decode = mask_and_scale and _band_has_scaling(band_info)
+
             lazy_array = dask.array.from_delayed(
                 dask.delayed(_load_file)(
                     session,
                     f"s3://{res.bucket.name}/{key}",
                     band_info.number,
+                    band_info if decode else None,
                 ),
                 shape=(
                     first_file.rio.height,
                     first_file.rio.width,
                 ),
-                dtype=band_info.dtype,
+                dtype="float32" if decode else band_info.dtype,
             )
 
             nodata = band_info.nodata if band_info.nodata is not None else np.nan
+
+            attrs = {"AREA_OR_POINT": first_file.attrs["AREA_OR_POINT"]}
+            encoding = {}
+            if decode:
+                # Decoded values are physical with NaN nodata; the packing
+                # spec moves to encoding, per xarray convention
+                encoding = {
+                    "dtype": band_info.dtype,
+                    "_FillValue": np.dtype(band_info.dtype).type(nodata),
+                    "scale_factor": band_info.scale if band_info.scale is not None else 1.0,
+                    "add_offset": band_info.offset if band_info.offset is not None else 0.0,
+                }
+            else:
+                attrs["_FillValue"] = np.dtype(band_info.dtype).type(nodata)
+                if _band_has_scaling(band_info):
+                    # Raw values on request: expose the true packing spec so
+                    # the user can apply it themselves
+                    attrs["scale_factor"] = band_info.scale if band_info.scale is not None else 1.0
+                    attrs["add_offset"] = band_info.offset if band_info.offset is not None else 0.0
 
             band_da = xarray.DataArray(
                 lazy_array,
@@ -155,13 +199,9 @@ def load_xarray_from_tiff(res: SubscriptionTIFF) -> xarray.Dataset:
                     "y": first_file.y.values,
                     "x": first_file.x.values,
                 },
-                attrs={
-                    "AREA_OR_POINT": first_file.attrs["AREA_OR_POINT"],
-                    "_FillValue": np.dtype(band_info.dtype).type(nodata),
-                    "scale_factor": first_file.attrs["scale_factor"],
-                    "add_offset": first_file.attrs["add_offset"],
-                },
+                attrs=attrs,
             )
+            encodings[band_info.name] = encoding
             # band_da.encoding = first_file.encoding.copy() # TODO: is it the same for all files?
             band_da.rio.write_crs(first_file.rio.crs, inplace=True)
             band_da.rio.write_transform(first_file.rio.transform(), inplace=True)
@@ -185,7 +225,7 @@ def load_xarray_from_tiff(res: SubscriptionTIFF) -> xarray.Dataset:
         else:
             data_vars[var_name] = time_series[0]
 
-    return xarray.Dataset(
+    ds = xarray.Dataset(
         data_vars=data_vars,
         attrs={
             "provider_name": res.provider_name,
@@ -196,13 +236,27 @@ def load_xarray_from_tiff(res: SubscriptionTIFF) -> xarray.Dataset:
         },
     )
 
+    # Applied post-assembly: expand_dims/concat do not reliably carry encoding
+    for name, encoding in encodings.items():
+        if encoding:
+            ds[name].encoding = encoding
 
-def _load_file(aws_session: boto3.session.Session, url: str, band_num: int):
+    return ds
+
+
+def _load_file(
+    aws_session: boto3.session.Session, url: str, band_num: int, decode_band=None
+):
     with rasterio.env.Env(
         session=rasterio.session.AWSSession(aws_session),
     ):
         with rasterio.open(url) as src:
-            return src.read(band_num)
+            values = src.read(band_num)
+
+    if decode_band is not None:
+        return _decode_band(values, decode_band)
+
+    return values
 
 
 def _list_keys(session: boto3.session.Session, bucket_name, prefix) -> list[str]:

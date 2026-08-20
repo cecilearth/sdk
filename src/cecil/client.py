@@ -230,7 +230,9 @@ class Client:
             raise e
             # raise e.with_traceback(None) from None
 
-    def load_xarray(self, subscription_id: str) -> xarray.Dataset:
+    def load_xarray(
+        self, subscription_id: str, mask_and_scale: bool = True
+    ) -> xarray.Dataset:
         try:
             res = SubscriptionFormat(
                 **self._get(
@@ -243,7 +245,7 @@ class Client:
                 tiff_files = SubscriptionTIFF(
                     **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
                 )
-                return load_xarray_from_tiff(tiff_files)
+                return load_xarray_from_tiff(tiff_files, mask_and_scale=mask_and_scale)
 
             if res.format == "zarr":
                 zarr_files = SubscriptionZarr(
