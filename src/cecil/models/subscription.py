@@ -82,3 +82,5 @@ class Band(Base):
     name: str
     dtype: str
     nodata: Optional[float | int] = None
+    scale: Optional[float] = None
+    offset: Optional[float] = None

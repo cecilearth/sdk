@@ -3,6 +3,9 @@
 ## 0.1.13 - 2026-08-20
 - Improved `load_dataframe()` performance for self-hosted datasets: the parquet footer is now read once per file instead of twice (up to ~3s faster per call on wide datasets).
 - Added optional `columns` parameter to `load_dataframe()` to load a subset of columns (self-hosted datasets only); `geometry` is always included.
+- `load_xarray()` now applies `scale_factor`/`add_offset` for bands that declare them in the dataset file schema: values are returned as physical float32 with NaN nodata, and the packing metadata moves to each variable's `.encoding`. Pass `mask_and_scale=False` to get raw packed values with the true `scale_factor`/`add_offset` as attributes instead. Bands without a declared scale/offset are unaffected.
+- Fixed `load_xarray()` stamping the first file's `scale_factor`/`add_offset` attributes onto every variable; variables without a declared scale/offset no longer carry these attributes.
+- Added `geometry_type` and `location_count` to the `AOI` model (returned by the API since 2026-08-20).
 
 ## 0.1.12 - 2026-05-11
 - Improves `load_dataframe()` compatibility with more vector dataset types across different coordinate reference systems.
