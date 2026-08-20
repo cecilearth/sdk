@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import geopandas
 import requests
@@ -192,7 +192,9 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def load_dataframe(self, subscription_id: str) -> geopandas.GeoDataFrame:
+    def load_dataframe(
+        self, subscription_id: str, columns: Optional[List[str]] = None
+    ) -> geopandas.GeoDataFrame:
         try:
             res = SubscriptionStorage(
                 **self._get(
@@ -202,6 +204,11 @@ class Client:
             )
 
             if res.storage == "ibat":
+                if columns is not None:
+                    raise SDKError(
+                        "The columns parameter is not supported for this dataset"
+                    )
+
                 res_parquet = SubscriptionParquet(
                     **self._get(
                         url=f"/v0/subscriptions/{subscription_id}/files/parquet"
@@ -215,7 +222,7 @@ class Client:
                         url=f"/v0/subscriptions/{subscription_id}/files/parquet/self-hosted"
                     )
                 )
-                return load_self_hosted_dataframe(res_parquet)
+                return load_self_hosted_dataframe(res_parquet, columns=columns)
 
             raise SDKError("Unexpected dataset storage")
 

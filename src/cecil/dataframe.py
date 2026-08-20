@@ -6,7 +6,6 @@ import pandas
 import pyarrow.compute
 import pyarrow.dataset
 import pyarrow.fs
-import pyarrow.parquet
 import rasterio.features
 
 from .models.subscription import SubscriptionParquet, SubscriptionSelfHostedParquet
@@ -14,6 +13,7 @@ from .models.subscription import SubscriptionParquet, SubscriptionSelfHostedParq
 
 def load_self_hosted_dataframe(
     res: SubscriptionSelfHostedParquet,
+    columns: list[str] | None = None,
 ) -> geopandas.GeoDataFrame:
     aoi_gdf_default = geopandas.GeoDataFrame.from_features(
         [{"type": "Feature", "geometry": res.geometry, "properties": {}}],
@@ -31,7 +31,13 @@ def load_self_hosted_dataframe(
     file_infos = pa_fs.get_file_info(pyarrow.fs.FileSelector(prefix))
     parquet_files = [f.path for f in file_infos if f.path.endswith(".parquet")]
 
-    parquet_crs = _get_parquet_crs(parquet_files[0], filesystem=pa_fs)
+    # Opening the dataset reads the parquet footer, which the filtered scan
+    # below needs anyway; taking the CRS from its schema avoids a second
+    # footer fetch per file (the footer alone is several MB on wide datasets)
+    datasets = [
+        pyarrow.dataset.dataset(path, filesystem=pa_fs) for path in parquet_files
+    ]
+    parquet_crs, primary_column = _get_geo_metadata(datasets[0].schema)
     aoi_gdf = aoi_gdf_default.to_crs(parquet_crs)
 
     minx, miny, maxx, maxy = aoi_gdf.total_bounds
@@ -42,10 +48,13 @@ def load_self_hosted_dataframe(
         & (pyarrow.compute.field("bbox", "ymax") >= miny)
     )
 
+    read_columns = None
+    if columns is not None:
+        read_columns = list(dict.fromkeys(["bbox", primary_column, *columns]))
+
     gdfs = []
-    for path in parquet_files:
-        dataset = pyarrow.dataset.dataset(path, filesystem=pa_fs)
-        table = dataset.to_table(filter=bbox_filter)
+    for dataset in datasets:
+        table = dataset.to_table(filter=bbox_filter, columns=read_columns)
         _gdf = geopandas.GeoDataFrame.from_arrow(table)
         gdfs.append(_gdf)
 
@@ -79,15 +88,13 @@ def load_dataframe(res: SubscriptionParquet) -> geopandas.GeoDataFrame:
     ).reset_index(drop=True)
 
 
-def _get_parquet_crs(path: str, filesystem: pyarrow.fs.FileSystem):
-    schema = pyarrow.parquet.read_schema(path, filesystem=filesystem)
-
+def _get_geo_metadata(schema) -> tuple[str, str]:
     geo_metadata = json.loads(schema.metadata[b"geo"].decode())
 
     primary_column = geo_metadata.get("primary_column", "geometry")
     crs = geo_metadata["columns"][primary_column]["crs"]
 
-    return crs
+    return crs, primary_column
 
 
 def _parquet_to_geodataframe(file):
