@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- Added `get_usage()`: your organisation's subscription and AOI counts and subscribed hectares, all-time and for the current calendar month, alongside the monthly subscription limit (and, for unverified organisations, the account caps). Requires the corresponding API release.
+
 ## 0.1.13 - 2026-08-20
 - Improved `load_dataframe()` performance for self-hosted datasets: the parquet footer is now read once per file instead of twice (up to ~3s faster per call on wide datasets).
 - Added optional `columns` parameter to `load_dataframe()` to load a subset of columns (self-hosted datasets only); `geometry` is always included.

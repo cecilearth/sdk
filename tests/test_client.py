@@ -2,6 +2,7 @@ import responses
 
 from src.cecil.client import Client
 from src.cecil.models import Subscription
+from src.cecil.models.usage import Usage
 
 FROZEN_TIME = "2024-01-01T00:00:00.000Z"
 
@@ -18,9 +19,9 @@ def test_client_create_subscription():
         "https://api.cecil.earth/v0/subscriptions",
         json={
             "id": "id",
-            "aoiId": "aoi_id",
-            "datasetId": "dataset_id",
-            "externalRef": "external_ref",
+            "aoi_id": "aoi_id",
+            "dataset_id": "dataset_id",
+            "external_ref": "external_ref",
             "created_at": FROZEN_TIME,
             "created_by": "user_id",
         },
@@ -32,9 +33,9 @@ def test_client_create_subscription():
 
     assert res == Subscription(
         id="id",
-        aoiId="aoi_id",
-        datasetId="dataset_id",
-        externalRef="external_ref",
+        aoi_id="aoi_id",
+        dataset_id="dataset_id",
+        external_ref="external_ref",
         created_at="2024-01-01T00:00:00.000Z",
         created_by="user_id",
     )
@@ -49,17 +50,17 @@ def test_client_list_subscriptions():
             "records": [
                 {
                     "id": "subscription_id_1",
-                    "aoiId": "aoi_id",
-                    "datasetId": "dataset_id",
-                    "externalRef": "external_ref",
+                    "aoi_id": "aoi_id",
+                    "dataset_id": "dataset_id",
+                    "external_ref": "external_ref",
                     "created_at": "2024-09-19T04:45:57.561Z",
                     "created_by": "user_id",
                 },
                 {
                     "id": "subscription_id_2",
-                    "aoiId": "aoi_id",
-                    "datasetId": "dataset_id",
-                    "externalRef": "",
+                    "aoi_id": "aoi_id",
+                    "dataset_id": "dataset_id",
+                    "external_ref": "",
                     "created_at": "2024-09-19T04:54:38.252Z",
                     "created_by": "user_id",
                 },
@@ -73,18 +74,51 @@ def test_client_list_subscriptions():
     assert subscriptions == [
         Subscription(
             id="subscription_id_1",
-            aoiId="aoi_id",
-            datasetId="dataset_id",
-            externalRef="external_ref",
+            aoi_id="aoi_id",
+            dataset_id="dataset_id",
+            external_ref="external_ref",
             created_at="2024-09-19T04:45:57.561Z",
             created_by="user_id",
         ),
         Subscription(
             id="subscription_id_2",
-            aoiId="aoi_id",
-            datasetId="dataset_id",
-            externalRef="",
+            aoi_id="aoi_id",
+            dataset_id="dataset_id",
+            external_ref="",
             created_at="2024-09-19T04:54:38.252Z",
             created_by="user_id",
         ),
     ]
+
+
+@responses.activate
+def test_client_get_usage():
+    responses.add(
+        responses.GET,
+        "https://api.cecil.earth/v0/usage",
+        json={
+            "num_subscriptions": 12,
+            "monthly_subscriptions": 3,
+            "total_area_ha": 123456.7,
+            "monthly_area_ha": 23456.7,
+            "num_aois": 8,
+            "monthly_aois": 2,
+            "monthly_subscription_limit": 50000,
+        },
+        status=200,
+    )
+
+    client = Client()
+    usage = client.get_usage()
+
+    assert usage == Usage(
+        num_subscriptions=12,
+        monthly_subscriptions=3,
+        total_area_ha=123456.7,
+        monthly_area_ha=23456.7,
+        num_aois=8,
+        monthly_aois=2,
+        monthly_subscription_limit=50000,
+    )
+    assert usage.max_subscriptions is None
+    assert usage.max_total_area_ha is None
