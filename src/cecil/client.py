@@ -20,6 +20,7 @@ from .models.subscription import (
     SubscriptionTIFF,
     SubscriptionZarr,
 )
+from .models.usage import Usage
 from .models.user import User
 from .models.webhook import Webhook
 from .version import __version__
@@ -132,6 +133,14 @@ class Client:
         try:
             res = self._get(url=f"/v0/subscriptions/{id}")
             return Subscription(**res)
+
+        except Exception as e:
+            raise e.with_traceback(None) from None
+
+    def get_usage(self) -> Usage:
+        try:
+            res = self._get(url="/v0/usage")
+            return Usage(**res)
 
         except Exception as e:
             raise e.with_traceback(None) from None
