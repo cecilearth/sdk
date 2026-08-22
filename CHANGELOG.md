@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.14 - 2026-08-22
 - Added `get_usage()`: your organisation's subscription and AOI counts and subscribed hectares, all-time and for the current calendar month, alongside the monthly subscription limit (and, for unverified organisations, the account caps). Requires the corresponding API release.
 
 ## 0.1.13 - 2026-08-20
