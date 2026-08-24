@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.15 - 2026-08-24
+- Widened the `pyarrow` dependency range to allow 23.x (previously pinned below 23), so new installs pick up pyarrow 23.0.1, which includes a high-severity security fix. Upgrading is recommended but not required — no SDK behaviour changes.
+
 ## 0.1.14 - 2026-08-22
 - Added `get_usage()`: your organisation's subscription and AOI counts and subscribed hectares, all-time and for the current calendar month, alongside the monthly subscription limit (and, for unverified organisations, the account caps). Requires the corresponding API release.
 
