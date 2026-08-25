@@ -7,7 +7,7 @@ import requests.auth
 import xarray
 
 from .dataframe import load_dataframe, load_self_hosted_dataframe
-from .errors import HTTPError, SDKError
+from .errors import DuplicateSubscriptionError, HTTPError, SDKError
 from .models.aoi import AOI
 from .models.dataset import Dataset
 from .models.settings import Settings
@@ -60,17 +60,28 @@ class Client:
             raise e.with_traceback(None) from None
 
     def create_subscription(
-        self, aoi_id: str, dataset_id: str, external_ref: str = None
+        self,
+        aoi_id: str,
+        dataset_id: str,
+        external_ref: str = None,
+        allow_duplicate: bool = False,
     ) -> Subscription:
         try:
             res = self._post(
                 url="/v0/subscriptions",
                 json=dict(
-                    aoi_id=aoi_id, dataset_id=dataset_id, external_ref=external_ref
+                    aoi_id=aoi_id,
+                    dataset_id=dataset_id,
+                    external_ref=external_ref,
+                    allow_duplicate=allow_duplicate,
                 ),
             )
             return Subscription(**res)
 
+        except HTTPError as e:
+            if e.status_code == 409:
+                raise DuplicateSubscriptionError(e).with_traceback(None) from None
+            raise e.with_traceback(None) from None
         except Exception as e:
             raise e.with_traceback(None) from None
 
