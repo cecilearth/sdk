@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.16 - 2026-08-25
+- `create_subscription()` no longer silently creates a duplicate: if you already have an active subscription for the same AOI and dataset, the API returns an error naming the existing subscription, raised as `cecil.errors.DuplicateSubscriptionError`. Pass the new `allow_duplicate=True` parameter to create one deliberately (for example, to pick up a new dataset version), or archive the old subscription first.
+- `create_aoi()` with a geometry identical to one of your existing AOIs now returns the existing AOI instead of creating a duplicate, so re-running a registration script converges on the same IDs. Passing a different `external_ref` still creates a separate AOI.
+- Added optional `scale` and `offset` to the dataset `Variable` model: variables whose stored values are packed now expose the packing in dataset metadata (`get_dataset()`/`list_datasets()`), matching the dataset pages.
+
 ## 0.1.15 - 2026-08-24
 - Widened the `pyarrow` dependency range to allow 23.x (previously pinned below 23), so new installs pick up pyarrow 23.0.1, which includes a high-severity security fix. Upgrading is recommended but not required — no SDK behaviour changes.
 
