@@ -1,6 +1,8 @@
+import pytest
 import responses
 
 from src.cecil.client import Client
+from src.cecil.errors import DuplicateSubscriptionError
 from src.cecil.models import Subscription
 from src.cecil.models.usage import Usage
 
@@ -39,6 +41,60 @@ def test_client_create_subscription():
         created_at="2024-01-01T00:00:00.000Z",
         created_by="user_id",
     )
+
+
+@responses.activate
+def test_client_create_subscription_duplicate():
+    message = (
+        "Already subscribed to Forest Carbon Diligence for this AOI "
+        "(subscription 79765fe6-ce95-40bc-9dd7-672e31d70253, created 2024-01-01). "
+        "Use the existing subscription, or pass allow_duplicate to create another "
+        "— e.g. to pick up a new dataset version."
+    )
+    responses.add(
+        responses.POST,
+        "https://api.cecil.earth/v0/subscriptions",
+        json=[message],
+        status=409,
+    )
+
+    client = Client()
+    with pytest.raises(DuplicateSubscriptionError) as err:
+        client.create_subscription("aoi_id", "dataset_id")
+
+    assert err.value.status_code == 409
+    assert err.value.response_body == [message]
+
+
+@responses.activate
+def test_client_create_subscription_allow_duplicate():
+    responses.add(
+        responses.POST,
+        "https://api.cecil.earth/v0/subscriptions",
+        json={
+            "id": "id",
+            "aoi_id": "aoi_id",
+            "dataset_id": "dataset_id",
+            "external_ref": None,
+            "created_at": FROZEN_TIME,
+            "created_by": "user_id",
+        },
+        status=201,
+        match=[
+            responses.matchers.json_params_matcher(
+                {
+                    "aoi_id": "aoi_id",
+                    "dataset_id": "dataset_id",
+                    "external_ref": None,
+                    "allow_duplicate": True,
+                }
+            )
+        ],
+    )
+
+    client = Client()
+    res = client.create_subscription("aoi_id", "dataset_id", allow_duplicate=True)
+    assert res.id == "id"
 
 
 @responses.activate

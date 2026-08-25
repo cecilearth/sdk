@@ -34,5 +34,20 @@ class HTTPError(Error):
         )
 
 
+class DuplicateSubscriptionError(HTTPError):
+    """An active subscription already exists for this AOI and dataset.
+
+    The API refuses silent duplicates — they bill twice. Use the existing
+    subscription (its id is in the message), or pass allow_duplicate=True
+    to create another deliberately, e.g. to pick up a new dataset version.
+    """
+
+    def __init__(self, err: HTTPError):
+        Error.__init__(self, *err.args)
+        self.status_code = err.status_code
+        self.status = err.status
+        self.response_body = err.response_body
+
+
 class SDKError(Error):
     pass
