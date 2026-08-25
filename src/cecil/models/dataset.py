@@ -67,6 +67,8 @@ class Variable(Base):
     type: str
     no_data: Optional[str]
     units: Optional[str]
+    scale: Optional[float] = None
+    offset: Optional[float] = None
     description: List[str]
     usage_notes: List[str]
     reference_table: List[Dict[str, Any]]
