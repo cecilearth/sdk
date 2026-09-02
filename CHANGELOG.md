@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.17 - 2026-09-03
+- Fixed `load_xarray()` failing with `ValueError: cannot convert float NaN to integer` when a dataset declares an integer band with no nodata value (first seen on Biomass Atlas `computed`). Such bands are now returned without a `_FillValue`; every stored value is data. Float bands without a declared nodata still default to NaN, and bands with a declared nodata are unchanged. Biomass Atlas users should upgrade to this version to use `load_xarray()`.
+
 ## 0.1.16 - 2026-08-25
 - `create_subscription()` no longer silently creates a duplicate: if you already have an active subscription for the same AOI and dataset, the API returns an error naming the existing subscription, raised as `cecil.errors.DuplicateSubscriptionError`. Pass the new `allow_duplicate=True` parameter to create one deliberately (for example, to pick up a new dataset version), or archive the old subscription first.
 - `create_aoi()` with a geometry identical to one of your existing AOIs now returns the existing AOI instead of creating a duplicate, so re-running a registration script converges on the same IDs. Passing a different `external_ref` still creates a separate AOI.
