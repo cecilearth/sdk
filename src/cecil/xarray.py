@@ -108,6 +108,20 @@ def _band_has_scaling(band_info) -> bool:
     return band_info.scale is not None or band_info.offset is not None
 
 
+def _band_fill_value(band_info):
+    """Fill value to stamp on a band, in the band's storage dtype.
+
+    A declared nodata is used as-is. Without one, float bands default to NaN
+    (matching the docs convention), while integer bands have no representable
+    fill value: every stored value is data, so no ``_FillValue`` is written."""
+    dtype = np.dtype(band_info.dtype)
+    if band_info.nodata is not None:
+        return dtype.type(band_info.nodata)
+    if np.issubdtype(dtype, np.floating):
+        return dtype.type(np.nan)
+    return None
+
+
 def _decode_band(values, band_info):
     """CF-style unpacking: mask nodata in the packed domain first, then
     physical = packed * scale + offset, as float32 with NaN nodata."""
@@ -171,7 +185,7 @@ def load_xarray_from_tiff(
                 dtype="float32" if decode else band_info.dtype,
             )
 
-            nodata = band_info.nodata if band_info.nodata is not None else np.nan
+            fill_value = _band_fill_value(band_info)
 
             attrs = {"AREA_OR_POINT": first_file.attrs["AREA_OR_POINT"]}
             encoding = {}
@@ -180,12 +194,14 @@ def load_xarray_from_tiff(
                 # spec moves to encoding, per xarray convention
                 encoding = {
                     "dtype": band_info.dtype,
-                    "_FillValue": np.dtype(band_info.dtype).type(nodata),
                     "scale_factor": band_info.scale if band_info.scale is not None else 1.0,
                     "add_offset": band_info.offset if band_info.offset is not None else 0.0,
                 }
+                if fill_value is not None:
+                    encoding["_FillValue"] = fill_value
             else:
-                attrs["_FillValue"] = np.dtype(band_info.dtype).type(nodata)
+                if fill_value is not None:
+                    attrs["_FillValue"] = fill_value
                 if _band_has_scaling(band_info):
                     # Raw values on request: expose the true packing spec so
                     # the user can apply it themselves
