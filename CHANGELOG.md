@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.18 - 2026-09-03
+- Added `dataset_publication` and `dataset_current_publication` to the `Subscription` model. `dataset_publication` is the publication of the dataset your subscription was created under and never changes; `dataset_current_publication` is the dataset's publication now. When the two differ, a newer publication exists and you can create a new subscription to pick it up (`create_subscription(..., allow_duplicate=True)`). Both are `None` for subscriptions the API has not pinned.
+- `load_xarray()` and `load_dataframe()` now attach both values to the returned object's `.attrs`, next to `dataset_id` and `subscription_id`. This adds one lightweight request per load. Note that pandas `.attrs` does not survive every DataFrame operation; the `Subscription` returned by `get_subscription()` is the source of truth.
+
 ## 0.1.17 - 2026-09-03
 - Fixed `load_xarray()` failing with `ValueError: cannot convert float NaN to integer` when a dataset declares an integer band with no nodata value (first seen on Biomass Atlas `computed`). Such bands are now returned without a `_FillValue`; every stored value is data. Float bands without a declared nodata still default to NaN, and bands with a declared nodata are unchanged. Biomass Atlas users should upgrade to this version to use `load_xarray()`.
 
