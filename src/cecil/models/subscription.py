@@ -8,6 +8,11 @@ class Subscription(Base):
     id: str
     aoi_id: str
     dataset_id: str
+    # Publication of the dataset this subscription was created under, and the
+    # dataset's current publication. They differ when a newer publication
+    # exists. Either may be None for subscriptions the API does not (yet) pin.
+    dataset_publication: Optional[str] = None
+    dataset_current_publication: Optional[str] = None
     external_ref: Optional[str] = None
     created_at: datetime.datetime
     created_by: str

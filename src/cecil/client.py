@@ -234,7 +234,9 @@ class Client:
                         url=f"/v0/subscriptions/{subscription_id}/files/parquet"
                     )
                 )
-                return load_dataframe(res_parquet)
+                gdf = load_dataframe(res_parquet)
+                gdf.attrs.update(self._publication_attrs(subscription_id))
+                return gdf
 
             if res.storage == "self-hosted":
                 res_parquet = SubscriptionSelfHostedParquet(
@@ -242,7 +244,9 @@ class Client:
                         url=f"/v0/subscriptions/{subscription_id}/files/parquet/self-hosted"
                     )
                 )
-                return load_self_hosted_dataframe(res_parquet, columns=columns)
+                gdf = load_self_hosted_dataframe(res_parquet, columns=columns)
+                gdf.attrs.update(self._publication_attrs(subscription_id))
+                return gdf
 
             raise SDKError("Unexpected dataset storage")
 
@@ -265,13 +269,17 @@ class Client:
                 tiff_files = SubscriptionTIFF(
                     **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
                 )
-                return load_xarray_from_tiff(tiff_files, mask_and_scale=mask_and_scale)
+                ds = load_xarray_from_tiff(tiff_files, mask_and_scale=mask_and_scale)
+                ds.attrs.update(self._publication_attrs(subscription_id))
+                return ds
 
             if res.format == "zarr":
                 zarr_files = SubscriptionZarr(
                     **self._get(url=f"/v0/subscriptions/{subscription_id}/files/zarr")
                 )
-                return load_xarray_from_zarr(zarr_files)
+                ds = load_xarray_from_zarr(zarr_files)
+                ds.attrs.update(self._publication_attrs(subscription_id))
+                return ds
 
             raise SDKError("Unexpected dataset format")
 
@@ -323,6 +331,20 @@ class Client:
 
         except Exception as e:
             raise e.with_traceback(None) from None
+
+    def _publication_attrs(self, subscription_id: str) -> Dict[str, str]:
+        # The pin lives on the subscription record, not on the files endpoints,
+        # so one extra lightweight request lets every loaded object say which
+        # publication it holds and whether a newer one exists. None values are
+        # omitted: attrs must stay serialisable (e.g. to_netcdf) and pandas
+        # .attrs is best-effort anyway — the subscription record is the source
+        # of truth.
+        subscription = self.get_subscription(subscription_id)
+        attrs = {
+            "dataset_publication": subscription.dataset_publication,
+            "dataset_current_publication": subscription.dataset_current_publication,
+        }
+        return {k: v for k, v in attrs.items() if v is not None}
 
     def _delete(self, url: str, skip_auth=False, **kwargs) -> Dict | str:
         return self._request(
