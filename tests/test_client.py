@@ -178,3 +178,53 @@ def test_client_get_usage():
     )
     assert usage.max_subscriptions is None
     assert usage.max_total_area_ha is None
+
+
+@responses.activate
+def test_client_get_subscription_publication():
+    responses.add(
+        responses.GET,
+        "https://api.cecil.earth/v0/subscriptions/subscription_id",
+        json={
+            "id": "subscription_id",
+            "aoi_id": "aoi_id",
+            "dataset_id": "dataset_id",
+            "dataset_publication": "1.1",
+            "dataset_current_publication": "1.3.0",
+            "external_ref": None,
+            "created_at": FROZEN_TIME,
+            "created_by": "user_id",
+            "archived_at": None,
+            "archived_by": None,
+        },
+        status=200,
+    )
+
+    client = Client()
+    subscription = client.get_subscription("subscription_id")
+
+    assert subscription.dataset_publication == "1.1"
+    assert subscription.dataset_current_publication == "1.3.0"
+    # A newer publication exists when the two differ
+    assert subscription.dataset_publication != subscription.dataset_current_publication
+
+
+@responses.activate
+def test_client_publication_attrs_omit_none():
+    responses.add(
+        responses.GET,
+        "https://api.cecil.earth/v0/subscriptions/subscription_id",
+        json={
+            "id": "subscription_id",
+            "aoi_id": "aoi_id",
+            "dataset_id": "dataset_id",
+            "dataset_publication": "6.0.0",
+            "dataset_current_publication": None,
+            "created_at": FROZEN_TIME,
+            "created_by": "user_id",
+        },
+        status=200,
+    )
+
+    client = Client()
+    assert client._publication_attrs("subscription_id") == {"dataset_publication": "6.0.0"}
