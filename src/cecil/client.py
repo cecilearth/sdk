@@ -364,7 +364,7 @@ class Client:
             return
         message = f"Subscription {subscription.id} is {subscription.status}"
         if subscription.status_message:
-            message += f": {subscription.status_message}"
+            message += f": {subscription.status_message.rstrip('.')}"
         warnings.warn(
             f"{message}. Data may be incomplete; check "
             "get_subscription().status before relying on it.",
