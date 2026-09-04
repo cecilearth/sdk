@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.19 - 2026-09-04
+- Added `status` and `status_message` to the `Subscription` model. `status` is one of `pending` (created, no data yet), `processing` (data arriving), `completed` (everything the dataset should have by now is delivered; later time steps such as a new quarter still arrive as appends), `partial` (some data landed but the subscription will not complete) or `failed` (no usable data). `status_message` is `None` unless there is something to say — the provider's own error text, or how long the pipeline has been quiet. Both are `None` on API responses that predate the field.
+- `load_xarray()` and `load_dataframe()` now emit a `UserWarning` when the subscription's status is not `completed`, so a valid-looking but incomplete dataset (for example 2 of 20 variables a few minutes after creation) is no longer silent. Nothing is raised; the data is returned as before.
+- `create_webhook()` accepts an optional `events` list to choose which event types the webhook receives: `subscription.delivered`, `subscription.failed`, `subscription.completed`. Omit it to receive all three. Existing webhooks keep receiving `delivered` and `failed` only; recreate one with `events` to add `completed`. The `Webhook` model gains `events`.
+
 ## 0.1.18 - 2026-09-03
 - Added `dataset_publication` and `dataset_current_publication` to the `Subscription` model. `dataset_publication` is the publication of the dataset your subscription was created under and never changes; `dataset_current_publication` is the dataset's publication now. When the two differ, a newer publication exists and you can create a new subscription to pick it up (`create_subscription(..., allow_duplicate=True)`). Both are `None` for subscriptions the API has not pinned.
 - `load_xarray()` and `load_dataframe()` now attach both values to the returned object's `.attrs`, next to `dataset_id` and `subscription_id`. This adds one lightweight request per load. Note that pandas `.attrs` does not survive every DataFrame operation; the `Subscription` returned by `get_subscription()` is the source of truth.

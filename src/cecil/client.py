@@ -1,4 +1,5 @@
 import os
+import warnings
 from typing import Dict, List, Optional
 
 import geopandas
@@ -100,12 +101,17 @@ class Client:
         except Exception as e:
             raise e.with_traceback(None) from None
 
-    def create_webhook(self, url: str, secret: str = None) -> Webhook:
+    def create_webhook(
+        self, url: str, secret: str = None, events: Optional[List[str]] = None
+    ) -> Webhook:
+        """Register a webhook. `events` selects which event types it receives
+        (subscription.delivered, subscription.failed, subscription.completed);
+        omit it to receive all of them."""
         try:
-            res = self._post(
-                url="/v0/webhooks",
-                json=dict(url=url, secret=secret),
-            )
+            body = dict(url=url, secret=secret)
+            if events is not None:
+                body["events"] = events
+            res = self._post(url="/v0/webhooks", json=body)
             return Webhook(**res)
 
         except Exception as e:
@@ -340,11 +346,30 @@ class Client:
         # .attrs is best-effort anyway — the subscription record is the source
         # of truth.
         subscription = self.get_subscription(subscription_id)
+        self._warn_if_incomplete(subscription)
         attrs = {
             "dataset_publication": subscription.dataset_publication,
             "dataset_current_publication": subscription.dataset_current_publication,
         }
         return {k: v for k, v in attrs.items() if v is not None}
+
+    @staticmethod
+    def _warn_if_incomplete(subscription: Subscription) -> None:
+        # A subscription that is still delivering (or has failed) returns a
+        # valid-looking but incomplete dataset — e.g. 2 of 20 variables a few
+        # minutes after creation. Warn rather than raise: partial data can be
+        # exactly what the caller wants while a long delivery is in flight.
+        # None means the API predates the status field.
+        if subscription.status in (None, "completed"):
+            return
+        message = f"Subscription {subscription.id} is {subscription.status}"
+        if subscription.status_message:
+            message += f": {subscription.status_message}"
+        warnings.warn(
+            f"{message}. Data may be incomplete; check "
+            "get_subscription().status before relying on it.",
+            stacklevel=3,
+        )
 
     def _delete(self, url: str, skip_auth=False, **kwargs) -> Dict | str:
         return self._request(

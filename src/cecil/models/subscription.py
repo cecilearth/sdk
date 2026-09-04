@@ -13,6 +13,12 @@ class Subscription(Base):
     # exists. Either may be None for subscriptions the API does not (yet) pin.
     dataset_publication: Optional[str] = None
     dataset_current_publication: Optional[str] = None
+    # Delivery status: pending / processing / completed / partial / failed,
+    # and a message when there is something to say (the provider's error, or
+    # how long the pipeline has been quiet). None on API responses that
+    # predate the field.
+    status: Optional[str] = None
+    status_message: Optional[str] = None
     external_ref: Optional[str] = None
     created_at: datetime.datetime
     created_by: str
