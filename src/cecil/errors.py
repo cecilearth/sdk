@@ -51,3 +51,22 @@ class DuplicateSubscriptionError(HTTPError):
 
 class SDKError(Error):
     pass
+
+
+class SubscriptionFailedError(Error):
+    """The subscription has failed, so there is no usable data to load.
+
+    Unlike pending / processing / partial, failed is terminal: nothing more
+    will arrive. Loading such a subscription is almost always a mistake, so
+    this is raised rather than warned. status_message carries the provider's
+    own explanation where one was given.
+    """
+
+    def __init__(self, subscription_id: str, status_message: str):
+        super().__init__(
+            f"Subscription {subscription_id} has failed: {status_message.rstrip('.')}. "
+            "No data will be delivered; check get_subscription().status_message "
+            "and create a new subscription once the cause is addressed."
+        )
+        self.subscription_id = subscription_id
+        self.status_message = status_message
