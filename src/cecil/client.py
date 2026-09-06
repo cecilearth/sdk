@@ -8,7 +8,12 @@ import requests.auth
 import xarray
 
 from .dataframe import load_dataframe, load_self_hosted_dataframe
-from .errors import DuplicateSubscriptionError, HTTPError, SDKError
+from .errors import (
+    DuplicateSubscriptionError,
+    HTTPError,
+    SDKError,
+    SubscriptionFailedError,
+)
 from .models.aoi import AOI
 from .models.dataset import Dataset
 from .models.settings import Settings
@@ -235,23 +240,25 @@ class Client:
                         "The columns parameter is not supported for this dataset"
                     )
 
+                attrs = self._publication_attrs(subscription_id)
                 res_parquet = SubscriptionParquet(
                     **self._get(
                         url=f"/v0/subscriptions/{subscription_id}/files/parquet"
                     )
                 )
                 gdf = load_dataframe(res_parquet)
-                gdf.attrs.update(self._publication_attrs(subscription_id))
+                gdf.attrs.update(attrs)
                 return gdf
 
             if res.storage == "self-hosted":
+                attrs = self._publication_attrs(subscription_id)
                 res_parquet = SubscriptionSelfHostedParquet(
                     **self._get(
                         url=f"/v0/subscriptions/{subscription_id}/files/parquet/self-hosted"
                     )
                 )
                 gdf = load_self_hosted_dataframe(res_parquet, columns=columns)
-                gdf.attrs.update(self._publication_attrs(subscription_id))
+                gdf.attrs.update(attrs)
                 return gdf
 
             raise SDKError("Unexpected dataset storage")
@@ -272,19 +279,21 @@ class Client:
             )
 
             if res.format == "tiff":
+                attrs = self._publication_attrs(subscription_id)
                 tiff_files = SubscriptionTIFF(
                     **self._get(url=f"/v0/subscriptions/{subscription_id}/files/tiff")
                 )
                 ds = load_xarray_from_tiff(tiff_files, mask_and_scale=mask_and_scale)
-                ds.attrs.update(self._publication_attrs(subscription_id))
+                ds.attrs.update(attrs)
                 return ds
 
             if res.format == "zarr":
+                attrs = self._publication_attrs(subscription_id)
                 zarr_files = SubscriptionZarr(
                     **self._get(url=f"/v0/subscriptions/{subscription_id}/files/zarr")
                 )
                 ds = load_xarray_from_zarr(zarr_files)
-                ds.attrs.update(self._publication_attrs(subscription_id))
+                ds.attrs.update(attrs)
                 return ds
 
             raise SDKError("Unexpected dataset format")
@@ -344,9 +353,11 @@ class Client:
         # publication it holds and whether a newer one exists. None values are
         # omitted: attrs must stay serialisable (e.g. to_netcdf) and pandas
         # .attrs is best-effort anyway — the subscription record is the source
-        # of truth.
+        # of truth. Called before the files are fetched so a failed
+        # subscription raises here, not from deeper inside a reader that finds
+        # nothing to read.
         subscription = self.get_subscription(subscription_id)
-        self._warn_if_incomplete(subscription)
+        self._check_status(subscription)
         attrs = {
             "dataset_publication": subscription.dataset_publication,
             "dataset_current_publication": subscription.dataset_current_publication,
@@ -354,14 +365,22 @@ class Client:
         return {k: v for k, v in attrs.items() if v is not None}
 
     @staticmethod
-    def _warn_if_incomplete(subscription: Subscription) -> None:
-        # A subscription that is still delivering (or has failed) returns a
-        # valid-looking but incomplete dataset — e.g. 2 of 20 variables a few
-        # minutes after creation. Warn rather than raise: partial data can be
-        # exactly what the caller wants while a long delivery is in flight.
-        # None means the API predates the status field.
+    def _check_status(subscription: Subscription) -> None:
+        # A subscription that is still delivering returns a valid-looking but
+        # incomplete dataset — e.g. 2 of 20 variables a few minutes after
+        # creation. Warn rather than raise for pending / processing / partial:
+        # partial data can be exactly what the caller wants while a long
+        # delivery is in flight. Failed is different: it is terminal and there
+        # is nothing usable, so an empty-looking result would be misleading
+        # (OpenForests, 2026-09-06). None means the API predates the status
+        # field.
         if subscription.status in (None, "completed"):
             return
+        if subscription.status == "failed":
+            raise SubscriptionFailedError(
+                subscription.id,
+                subscription.status_message or "The provider returned no detail.",
+            )
         message = f"Subscription {subscription.id} is {subscription.status}"
         if subscription.status_message:
             message += f": {subscription.status_message.rstrip('.')}"
