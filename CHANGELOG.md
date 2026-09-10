@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.20 - 2026-09-10
+- `load_xarray()` and `load_dataframe()` now raise `SubscriptionFailedError` when the subscription's status is `failed`, instead of warning and returning an empty-looking result. `failed` is terminal, so there is nothing to load; the error message carries the subscription ID and the provider's own explanation from `status_message` (or "The provider returned no detail." when none was given). `pending`, `processing` and `partial` subscriptions still emit the `UserWarning` introduced in 0.1.19 and return the data that exists. Catch `cecil.errors.SubscriptionFailedError` (a subclass of `cecil.errors.Error`) if your code loads subscriptions whose status you have not checked.
+
 ## 0.1.19 - 2026-09-04
 - Added `status` and `status_message` to the `Subscription` model. `status` is one of `pending` (created, no data yet), `processing` (data arriving), `completed` (everything the dataset should have by now is delivered; later time steps such as a new quarter still arrive as appends), `partial` (some data landed but the subscription will not complete) or `failed` (no usable data). `status_message` is `None` unless there is something to say — the provider's own error text, or how long the pipeline has been quiet. Both are `None` on API responses that predate the field.
 - `load_xarray()` and `load_dataframe()` now emit a `UserWarning` when the subscription's status is not `completed`, so a valid-looking but incomplete dataset (for example 2 of 20 variables a few minutes after creation) is no longer silent. Nothing is raised; the data is returned as before.
