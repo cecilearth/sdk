@@ -141,7 +141,7 @@ Single-package Python project built with `hatch`.
   - `dataframe.py` — `load_dataframe()` / `load_self_hosted_dataframe()` — retrieves parquet URLs from the API and reads them via `pyarrow` + `geopandas`.
   - `xarray.py` — `load_xarray_from_tiff()` / `load_xarray_from_zarr()` — reads raster subscription outputs via `rioxarray` / `zarr` (with `s3fs`/`dask` for large Zarr).
   - `models/` — Pydantic models: `AOI`, `Dataset`, `Settings`, `Subscription` (+ `SubscriptionTIFF`, `SubscriptionZarr`, `SubscriptionParquet`, `SubscriptionSelfHostedParquet`, `SubscriptionFormat`, `SubscriptionStorage`), `User`, `Webhook`.
-  - `errors.py` — `Error`, `HTTPError`, `SDKError`.
+  - `errors.py` — `Error`, `HTTPError`, `DuplicateSubscriptionError`, `SDKError`, `SubscriptionFailedError`.
   - `version.py` — `__version__` (`hatch` reads this dynamically).
 - `tests/` — unit tests using `responses` to stub HTTP.
 - `pyproject.toml` — declares the `cecil` package, deps (`boto3`, `dask`, `geopandas`, `pyarrow`, `pydantic`, `requests`, `rioxarray`, `s3fs`, `xarray`, `zarr`), Python `>=3.11`.

@@ -5,6 +5,7 @@ import pytest
 import responses
 
 from src.cecil.client import Client
+from src.cecil.errors import Error, SubscriptionFailedError
 from src.cecil.models import Subscription, Webhook
 
 FROZEN_TIME = "2024-01-01T00:00:00.000Z"
@@ -81,6 +82,51 @@ def test_load_dataframe_warns_on_partial_without_message():
     mock_ibat_load(status="partial")
 
     with pytest.warns(UserWarning, match=r"subscription_id is partial\. Data may be incomplete"):
+        Client().load_dataframe("subscription_id")
+
+
+@responses.activate
+def test_load_dataframe_raises_when_failed():
+    mock_ibat_load(status="failed", status_message="AOI too scattered.")
+
+    with pytest.raises(SubscriptionFailedError) as excinfo:
+        Client().load_dataframe("subscription_id")
+
+    err = excinfo.value
+    assert isinstance(err, Error)
+    assert err.subscription_id == "subscription_id"
+    assert err.status_message == "AOI too scattered."
+    assert "subscription_id has failed: AOI too scattered." in str(err)
+    assert "No data will be delivered" in str(err)
+
+
+@responses.activate
+def test_load_dataframe_raises_when_failed_without_message():
+    mock_ibat_load(status="failed")
+
+    with pytest.raises(SubscriptionFailedError, match="The provider returned no detail"):
+        Client().load_dataframe("subscription_id")
+
+
+@responses.activate
+def test_load_dataframe_checks_status_before_fetching_files():
+    # The status check must come first: a failed subscription should raise
+    # SubscriptionFailedError, not whatever a reader says about missing files.
+    mock_ibat_load(status="failed", status_message="AOI too scattered.")
+
+    with pytest.raises(SubscriptionFailedError):
+        Client().load_dataframe("subscription_id")
+
+    called = [c.request.url for c in responses.calls]
+    assert not any(url.endswith("/files/parquet") for url in called)
+
+
+@responses.activate
+def test_load_dataframe_does_not_raise_on_partial():
+    # Partial is terminal too, but it has usable data: stays a warning.
+    mock_ibat_load(status="partial", status_message="12 of 13 requests completed.")
+
+    with pytest.warns(UserWarning, match="is partial"):
         Client().load_dataframe("subscription_id")
 
 
